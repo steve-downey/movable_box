@@ -1,0 +1,22 @@
+{
+  "name": "beman-movable-box",
+  "version-semver": "@VERSION@",
+  "description": "A non-exposition-only movable-box",
+  "homepage": "https://github.com/bemanproject/movable_box",
+  "license": "Apache-2.0 WITH LLVM-exception",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "features": {
+    "modules": {
+      "description": "Provide beman.movable_box as a C++ module"
+    }
+  }
+}

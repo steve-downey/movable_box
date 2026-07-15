@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+# Standard answers and internal state managed by Copier
+_commit: v2.4.1-21-g2f71a48
+_src_path: /home/sdowney/src/exemplar/copier-extended/
+description: A non-exposition-only movable-box
+maintainer: steve-downey
+minimum_cpp_build_version: '20'
+paper: PnnnnRr
+project_name: movable_box
+unit_test_library: catch2
+# Hidden variables manually tracked because 'when: false' omits them from _copier_answers
+generating_exemplar: false
+owner: "bemanproject"
+ci_tests_cron: "40 3 * * 4"
+pre_commit_update_cron: "23 14 * * 3"
