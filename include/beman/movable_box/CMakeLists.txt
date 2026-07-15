@@ -9,7 +9,6 @@ if(BEMAN_MOVABLE_BOX_USE_MODULES)
                 FILES
                     config.hpp
                     movable_box.hpp
-                    todo.hpp
                     "${PROJECT_BINARY_DIR}/include/beman/movable_box/config_generated.hpp"
     )
 else()
@@ -20,7 +19,6 @@ else()
                 FILES
                     config.hpp
                     movable_box.hpp
-                    todo.hpp
                     "${PROJECT_BINARY_DIR}/include/beman/movable_box/config_generated.hpp"
     )
 endif()

@@ -12,9 +12,13 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 ![Standard Target](https://github.com/bemanproject/beman/blob/main/images/badges/cpp29.svg)
 <!-- markdownlint-restore -->
 
-`beman.movable_box` is (... TODO: description).
+`beman.movable_box` provides `movable_box<T>`, the ranges *movable-box* wrapper: a
+`move_constructible` object wrapper that synthesizes copy/move assignment (via
+destroy-then-construct when `T` itself is not assignable) so that the result always models
+`movable`, as a public, non-exposition-only library type.
 
-**Implements**: `std::todo` proposed in [TODO (PnnnnRr)](https://wg21.link/PnnnnRr).
+**Implements**: `std::movable_box` proposed in the D3XXXR0 draft paper
+([docs/movable_box.md](docs/movable_box.md)).
 
 **Status**: [Under development and not yet ready for production use.](https://github.com/bemanproject/beman/blob/main/docs/beman_library_maturity_model.md#under-development-and-not-yet-ready-for-production-use)
 
@@ -24,7 +28,33 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 ## Usage
 
-TODO
+`movable_box<T>` stores a `move_constructible` object and gives it assignability, even when `T`
+itself is not assignable -- exactly the tool range adaptors use to hold predicates, projections,
+and transformation functions inside otherwise-`movable` view types.
+
+```cpp
+#include <beman/movable_box/movable_box.hpp>
+
+#include <utility>
+
+constexpr auto make_adder(int captured) {
+    return [captured](int x) { return x + captured; };
+}
+
+using Adder = decltype(make_adder(0));
+
+int main() {
+    // A capturing lambda's closure type has a deleted copy/move assignment operator, so it
+    // cannot be stored directly in a type that must remain assignable.
+    beman::movable_box::movable_box<Adder> box(make_adder(3));
+
+    // Assignability is synthesized: even though `Adder` has no operator=, `box` can be
+    // reassigned. Internally this destroys and reconstructs the contained callable.
+    box = beman::movable_box::movable_box<Adder>(make_adder(-3));
+
+    return (*box)(10); // 7
+}
+```
 
 Full runnable examples can be found in [`examples/`](examples/).
 
@@ -36,7 +66,7 @@ This project requires at least the following to build:
 
 * A C++ compiler that conforms to the C++20 standard or greater
 * CMake 3.30 or later
-* (Test Only) GoogleTest
+* (Test Only) Catch2
 
 You can disable building tests by setting CMake option `BEMAN_MOVABLE_BOX_BUILD_TESTS` to
 `OFF` when configuring the project.

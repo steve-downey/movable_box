@@ -15,4 +15,3 @@ dev = [
 ]
 
 [tool.codespell]
-ignore-words-list = ''
