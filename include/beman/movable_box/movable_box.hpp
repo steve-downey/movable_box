@@ -71,6 +71,12 @@ class flat_storage {
         requires(!std::is_trivially_move_constructible_v<T>)
         : value_(std::move(*other.get())) {}
 
+    // Declared only so movable_box's conditionally defaulted assignment operators (see
+    // use_trivial_copy_assign_v below) have a non-deprecated member assignment to default to;
+    // deleted when T is not assignable, in which case movable_box provides its own.
+    constexpr flat_storage& operator=(const flat_storage&) = default;
+    constexpr flat_storage& operator=(flat_storage&&)      = default;
+
     constexpr ~flat_storage()
         requires std::is_trivially_destructible_v<T>
     = default;
@@ -178,6 +184,23 @@ class boxed_storage {
 template <class T>
 using storage_for = std::conditional_t<use_flat_storage_v<T>, flat_storage<T>, boxed_storage<T> >;
 
+// The synthesized assignment operators can be defaulted -- and are then trivial -- when their
+// specified effects are indistinguishable from copying the object representation: the storage is
+// flat (always engaged, no discriminant), T's corresponding assignment, construction, and
+// destruction are all trivial (so both the copy-assign fast path and the destroy-then-construct
+// fallback reduce to a memcpy), and the self-assignment check is unobservable. This keeps
+// movable_box<T> trivially copyable for trivially copyable, assignable T -- and with it any view
+// storing one -- mirroring the conditions of [optional.assign].
+template <class T>
+inline constexpr bool use_trivial_copy_assign_v =
+    use_flat_storage_v<T> && std::is_trivially_copy_constructible_v<T> && std::is_trivially_copy_assignable_v<T> &&
+    std::is_trivially_destructible_v<T>;
+
+template <class T>
+inline constexpr bool use_trivial_move_assign_v =
+    use_flat_storage_v<T> && std::is_trivially_move_constructible_v<T> && std::is_trivially_move_assignable_v<T> &&
+    std::is_trivially_destructible_v<T>;
+
 } // namespace detail
 
 // [movable.box], class template movable_box
@@ -229,12 +252,18 @@ class movable_box {
 
     // [movable.box.assign], assignment
 
+    // This operator is trivial (defaulted) when the specified effects reduce to copying the
+    // object representation; see detail::use_trivial_copy_assign_v.
+    constexpr movable_box& operator=(const movable_box&)
+        requires std::copy_constructible<T> && detail::use_trivial_copy_assign_v<T>
+    = default;
+
     // Remarks: The exception specification is equivalent to:
     // is_nothrow_copy_constructible_v<T> && (!copyable<T> || is_nothrow_copy_assignable_v<T>).
     constexpr movable_box& operator=(const movable_box& rhs) noexcept(std::is_nothrow_copy_constructible_v<T> &&
                                                                       (!std::copyable<T> ||
                                                                        std::is_nothrow_copy_assignable_v<T>))
-        requires std::copy_constructible<T>
+        requires std::copy_constructible<T> && (!detail::use_trivial_copy_assign_v<T>)
     {
         // Effects: If this == addressof(rhs) is true, no effects.
         if (this == std::addressof(rhs)) {
@@ -264,11 +293,19 @@ class movable_box {
         return *this;
     }
 
+    // This operator is trivial (defaulted) when the specified effects reduce to copying the
+    // object representation; see detail::use_trivial_copy_assign_v.
+    constexpr movable_box& operator=(movable_box&&)
+        requires detail::use_trivial_move_assign_v<T>
+    = default;
+
     // Remarks: The exception specification is equivalent to:
     // is_nothrow_move_constructible_v<T> && (!movable<T> || is_nothrow_move_assignable_v<T>).
     constexpr movable_box& operator=(movable_box&& rhs) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                                                  (!std::movable<T> ||
-                                                                  std::is_nothrow_move_assignable_v<T>)) {
+                                                                  std::is_nothrow_move_assignable_v<T>))
+        requires(!detail::use_trivial_move_assign_v<T>)
+    {
         // Effects: If this == addressof(rhs) is true, no effects.
         if (this == std::addressof(rhs)) {
             return *this;
