@@ -10,7 +10,7 @@
 #include <utility>
 
 // This suite tests movable_box<T> against the proposed wording in
-// docs/movable_box.md ([movable.box.general] / [movable.box.ctor] /
+// papers/movable_box.md ([movable.box.general] / [movable.box.ctor] /
 // [movable.box.dtor] / [movable.box.assign] / [movable.box.obs]), not
 // against any particular implementation strategy. Storage-optimization
 // (D8/[movable.box.general]p3, recommended practice) is exercised only where
@@ -219,27 +219,45 @@ struct ThrowingMoveAssign {
 template <class T>
 concept can_box = requires { sizeof(box_under_test::movable_box<T>); };
 
+// Detects whether Box provides a nested value_type: used so that a box
+// lacking it (libstdc++'s __box) fails the check at runtime rather than
+// failing to compile.
+template <class Box>
+concept box_has_value_type = requires { typename Box::value_type; };
+
+// Checks Box::value_type against Expected when present. A template, so that
+// when box_has_value_type<Box> is false, Box::value_type -- a dependent
+// name -- is never instantiated instead of being a hard compile error.
+template <class Box, class Expected>
+void check_value_type_is_impl() {
+    if constexpr (box_has_value_type<Box>) {
+        CHECK(std::same_as<typename Box::value_type, Expected>);
+    }
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------
 // Interface presence (D6) and constraints (D7)
 // ---------------------------------------------------------------------
 
-#if !defined(BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX)
 // Proposed-public-interface only: value_type is part of the proposed
 // synopsis; libstdc++'s no-discriminant __box specialization does not
-// provide it (the exposition-only type has no reason to).
+// provide it (the exposition-only type has no reason to). Checked via
+// box_has_value_type rather than excluded at compile time, so the absence
+// is reported as a failing test instead of a build failure.
 TEST_CASE("value_type names T", "[movable_box]") {
-    STATIC_REQUIRE(std::same_as<box_under_test::movable_box<int>::value_type, int>);
-    STATIC_REQUIRE(std::same_as<box_under_test::movable_box<Regular>::value_type, Regular>);
+    CHECK(box_has_value_type<box_under_test::movable_box<int>>);
+    CHECK(box_has_value_type<box_under_test::movable_box<Regular>>);
+
+    check_value_type_is_impl<box_under_test::movable_box<int>, int>();
+    check_value_type_is_impl<box_under_test::movable_box<Regular>, Regular>();
 }
-#endif
 
 TEST_CASE("default constructor is present iff default_initializable<T>", "[movable_box]") {
     STATIC_REQUIRE(std::default_initializable<int>);
     STATIC_REQUIRE(std::default_initializable<box_under_test::movable_box<int>>);
 
-#if !defined(BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX)
     // Delta-specification hazard, exactly as argued in D5: libstdc++'s
     // optional-based primary __box inherits optional's constructors --
     // including the default constructor -- so __box<NonAssignable>{} is
@@ -247,9 +265,11 @@ TEST_CASE("default constructor is present iff default_initializable<T>", "[movab
     // is not default_initializable. Unobservable through the views (their
     // own default constructors are constrained on default_initializable<T>),
     // but it is the kind of accident a standalone specification precludes.
-    STATIC_REQUIRE_FALSE(std::default_initializable<NonAssignable>);
-    STATIC_REQUIRE_FALSE(std::default_initializable<box_under_test::movable_box<NonAssignable>>);
-#endif
+    // Checked with a runtime CHECK rather than STATIC_REQUIRE so that the
+    // divergence is a failing test, not a build failure, under
+    // BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
+    CHECK_FALSE(std::default_initializable<NonAssignable>);
+    CHECK_FALSE(std::default_initializable<box_under_test::movable_box<NonAssignable>>);
 }
 
 TEST_CASE("value constructors from const T& and T&& are explicit and non-template", "[movable_box]") {
@@ -632,14 +652,23 @@ TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> 
     using RegularBox = box_under_test::movable_box<Regular>;
     STATIC_REQUIRE(noexcept(std::declval<RegularBox&>() = std::declval<RegularBox>()));
 
-#if !defined(BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX)
-    // Known libstdc++ divergence: for movable T its no-discriminant __box
-    // defaults the move assignment, whose noexcept follows T's move
-    // *assignment* alone -- stronger than the optional-derived formula when
-    // T's move constructor throws but its move assignment does not.
+    // The assertions below that a box is *not* noexcept are stricter than the
+    // wording can be: [res.on.exception.handling] p5 lets an implementation
+    // strengthen any non-virtual function's exception specification, so no
+    // conformance test may require noexcept(false). They record what this
+    // reference implementation does, not what the proposal guarantees.
+    //
+    // libstdc++ exercises exactly that freedom: for movable T its
+    // no-discriminant __box defaults the move assignment, whose noexcept
+    // follows T's move *assignment* alone -- stronger than the
+    // optional-derived formula when T's move constructor throws but its move
+    // assignment does not. Its own optional-based primary template gives the
+    // weaker answer, so the two specializations disagree, and both conform.
+    // Checked with a runtime CHECK_FALSE rather than STATIC_REQUIRE_FALSE so
+    // that the strengthening is a reported result, not a build failure, under
+    // BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
     using ThrowingMoveBox = box_under_test::movable_box<ThrowingMove>;
-    STATIC_REQUIRE_FALSE(noexcept(std::declval<ThrowingMoveBox&>() = std::declval<ThrowingMoveBox>()));
-#endif
+    CHECK_FALSE(noexcept(std::declval<ThrowingMoveBox&>() = std::declval<ThrowingMoveBox>()));
 
     using ThrowingMoveAssignBox = box_under_test::movable_box<ThrowingMoveAssign>;
     STATIC_REQUIRE_FALSE(noexcept(std::declval<ThrowingMoveAssignBox&>() = std::declval<ThrowingMoveAssignBox>()));

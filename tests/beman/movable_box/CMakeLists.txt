@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 find_package(Catch2 3 REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${Catch2_SOURCE_DIR}/extras")
+include(Catch)
 
 add_executable(beman.movable_box.tests.movable_box)
 target_sources(beman.movable_box.tests.movable_box PRIVATE movable_box.test.cpp)
