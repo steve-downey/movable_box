@@ -188,9 +188,9 @@ using storage_for = std::conditional_t<use_flat_storage_v<T>, flat_storage<T>, b
 // specified effects are indistinguishable from copying the object representation: the storage is
 // flat (always engaged, no discriminant), T's corresponding assignment, construction, and
 // destruction are all trivial (so both the copy-assign fast path and the destroy-then-construct
-// fallback reduce to a memcpy), and the self-assignment check is unobservable. This keeps
-// movable_box<T> trivially copyable for trivially copyable, assignable T -- and with it any view
-// storing one -- mirroring the conditions of [optional.assign].
+// fallback reduce to a memcpy), and the self-assignment check is unobservable. These are the
+// conditions of [optional.assign]. So a trivially copyable, trivially assignable T yields a
+// trivially copyable box -- and with it, a trivially copyable view.
 template <class T>
 inline constexpr bool use_trivial_copy_assign_v =
     use_flat_storage_v<T> && std::is_trivially_copy_constructible_v<T> && std::is_trivially_copy_assignable_v<T> &&

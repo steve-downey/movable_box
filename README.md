@@ -17,8 +17,8 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 destroy-then-construct when `T` itself is not assignable) so that the result always models
 `movable`, as a public, non-exposition-only library type.
 
-**Implements**: `std::movable_box` proposed in the D3XXXR0 draft paper
-([docs/movable_box.md](docs/movable_box.md)).
+**Implements**: `std::movable_box` proposed in the draft paper
+([papers/movable_box.md](papers/movable_box.md)); paper number not yet assigned.
 
 **Status**: [Under development and not yet ready for production use.](https://github.com/bemanproject/beman/blob/main/docs/beman_library_maturity_model.md#under-development-and-not-yet-ready-for-production-use)
 
