@@ -16,4 +16,10 @@ foreach(example ${ALL_EXAMPLES})
             PROPERTIES CXX_MODULE_STD ON
         )
     endif()
+    if(BEMAN_MOVABLE_BOX_BUILD_TESTS)
+        add_test(
+            NAME beman.movable_box.examples.${example}
+            COMMAND beman.movable_box.examples.${example}
+        )
+    endif()
 endforeach()

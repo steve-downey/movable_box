@@ -128,5 +128,7 @@ int main() {
 
     std::cout << "a = {" << a->tag << ", " << a->value << "}\n";
     a = b; // destroy-then-copy-construct, since fixed_point isn't copyable
+    auto& self = a;
+    a          = self; // self-assignment is specified to have no effects
     std::cout << "a = {" << a->tag << ", " << a->value << "}\n";
 }

@@ -269,22 +269,18 @@ class movable_box {
         if (this == std::addressof(rhs)) {
             return *this;
         }
-        if constexpr (std::copyable<T>) {
-            // If copyable<T> is modeled: if *this and rhs each contain a value, the contained
-            // value of *this is copy-assigned from *rhs; otherwise, if rhs contains a value, a
-            // contained value is direct-non-list-initialized with *rhs; otherwise, the contained
-            // value of *this, if any, is destroyed.
-            if (storage_.has_value() && rhs.storage_.has_value()) {
+        if constexpr (detail::use_flat_storage_v<T>) {
+            if constexpr (std::copyable<T>) {
                 *storage_.get() = *rhs.storage_.get();
-            } else if (rhs.storage_.has_value()) {
-                storage_.construct(*rhs.storage_.get());
             } else {
                 storage_.destroy();
+                storage_.construct(*rhs.storage_.get());
             }
         } else {
             // Otherwise: the contained value of *this, if any, is destroyed; then, if rhs
             // contains a value, a contained value is direct-non-list-initialized with *rhs. If
             // the initialization exits via an exception, *this contains no value.
+            static_assert(!std::copyable<T>);
             storage_.destroy();
             if (rhs.storage_.has_value()) {
                 storage_.construct(*rhs.storage_.get());
@@ -310,26 +306,35 @@ class movable_box {
         if (this == std::addressof(rhs)) {
             return *this;
         }
-        if constexpr (std::movable<T>) {
-            // If movable<T> is modeled: if *this and rhs each contain a value, the contained
-            // value of *this is move-assigned from *rhs; otherwise, if rhs contains a value, a
-            // contained value is direct-non-list-initialized with std::move(*rhs); otherwise, the
-            // contained value of *this, if any, is destroyed. rhs.has_value() is unchanged.
-            if (storage_.has_value() && rhs.storage_.has_value()) {
+        if constexpr (detail::use_flat_storage_v<T>) {
+            if constexpr (std::movable<T>) {
                 *storage_.get() = std::move(*rhs.storage_.get());
-            } else if (rhs.storage_.has_value()) {
-                storage_.construct(std::move(*rhs.storage_.get()));
             } else {
                 storage_.destroy();
+                storage_.construct(std::move(*rhs.storage_.get()));
             }
         } else {
-            // Otherwise: the contained value of *this, if any, is destroyed; then, if rhs
-            // contains a value, a contained value is direct-non-list-initialized with
-            // std::move(*rhs). If the initialization exits via an exception, *this contains no
-            // value. rhs.has_value() is unchanged.
-            storage_.destroy();
-            if (rhs.storage_.has_value()) {
-                storage_.construct(std::move(*rhs.storage_.get()));
+            if constexpr (std::movable<T>) {
+                // If movable<T> is modeled: if *this and rhs each contain a value, the contained
+                // value of *this is move-assigned from *rhs; otherwise, if rhs contains a value, a
+                // contained value is direct-non-list-initialized with std::move(*rhs); otherwise,
+                // the contained value of *this, if any, is destroyed. rhs.has_value() is unchanged.
+                if (storage_.has_value() && rhs.storage_.has_value()) {
+                    *storage_.get() = std::move(*rhs.storage_.get());
+                } else if (rhs.storage_.has_value()) {
+                    storage_.construct(std::move(*rhs.storage_.get()));
+                } else {
+                    storage_.destroy();
+                }
+            } else {
+                // Otherwise: the contained value of *this, if any, is destroyed; then, if rhs
+                // contains a value, a contained value is direct-non-list-initialized with
+                // std::move(*rhs). If the initialization exits via an exception, *this contains no
+                // value. rhs.has_value() is unchanged.
+                storage_.destroy();
+                if (rhs.storage_.has_value()) {
+                    storage_.construct(std::move(*rhs.storage_.get()));
+                }
             }
         }
         return *this;

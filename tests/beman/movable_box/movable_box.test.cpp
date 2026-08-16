@@ -101,7 +101,7 @@ struct NonAssignable {
     int value;
 
     explicit NonAssignable(int v) : value(v) { ++counters.value_ctor; }
-    NonAssignable(const NonAssignable& o) : value(o.value) { ++counters.copy_ctor; }
+    NonAssignable(const NonAssignable& o) noexcept : value(o.value) { ++counters.copy_ctor; }
     NonAssignable(NonAssignable&& o) noexcept : value(o.value) { ++counters.move_ctor; }
     NonAssignable& operator=(const NonAssignable&) = delete;
     NonAssignable& operator=(NonAssignable&&)      = delete;
@@ -216,6 +216,29 @@ struct ThrowingMoveAssign {
     }
 };
 
+// Movable but not copyable, with potentially-throwing construction: this
+// forces boxed storage while still taking the movable<T> assignment branch.
+struct BoxedMovable {
+    inline static bool armed = false;
+
+    int value;
+
+    explicit BoxedMovable(int v) : value(v) {}
+    BoxedMovable(const BoxedMovable& o) : value(o.value) {
+        if (armed) {
+            armed = false;
+            throw ThrowingCopyError{};
+        }
+    }
+    BoxedMovable(BoxedMovable&& o) : value(o.value) { o.value = -1; }
+    BoxedMovable& operator=(const BoxedMovable&) = delete;
+    BoxedMovable& operator=(BoxedMovable&& o) noexcept {
+        value   = o.value;
+        o.value = -1;
+        return *this;
+    }
+};
+
 // Detects whether box_under_test::movable_box<T> is a valid type: used
 // to check the constraints in D7 without triggering a hard compile error
 // for the negative cases.
@@ -264,16 +287,16 @@ TEST_CASE("default constructor is present iff default_initializable<T>",
 
     // Delta-specification hazard, exactly as argued in D5: libstdc++'s
     // optional-based primary __box inherits optional's constructors --
-    // including the default constructor -- so __box<NonAssignable>{} is
-    // well-formed and produces a *disengaged* box even though NonAssignable
+    // including the default constructor -- so __box<ThrowingCopy>{} is
+    // well-formed and produces a *disengaged* box even though ThrowingCopy
     // is not default_initializable. Unobservable through the views (their
     // own default constructors are constrained on default_initializable<T>),
     // but it is the kind of accident a standalone specification precludes.
     // Checked with a runtime CHECK rather than STATIC_REQUIRE so that the
     // divergence is a Catch2 expected failure, not a build failure, under
     // BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
-    CHECK_FALSE(std::default_initializable<NonAssignable>);
-    CHECK_FALSE(std::default_initializable<box_under_test::movable_box<NonAssignable>>);
+    CHECK_FALSE(std::default_initializable<ThrowingCopy>);
+    CHECK_FALSE(std::default_initializable<box_under_test::movable_box<ThrowingCopy>>);
 }
 
 TEST_CASE("value constructors from const T& and T&& are explicit and non-template", "[movable_box]") {
@@ -468,6 +491,44 @@ TEST_CASE("self-assignment is a no-op", "[movable_box]") {
     CHECK(NonAssignable::counters.dtor == 0);
     CHECK(NonAssignable::counters.move_ctor == 0);
     CHECK(a->value == 42);
+
+    box_under_test::movable_box<ThrowingCopy> throwing(std::in_place, 7);
+    auto&                                    throwing_ref = throwing;
+
+    ThrowingCopy::armed = true;
+    throwing            = throwing_ref;
+    CHECK(ThrowingCopy::armed);
+    CHECK(throwing.has_value());
+    CHECK(throwing->value == 7);
+
+    throwing = std::move(throwing_ref);
+    CHECK(ThrowingCopy::armed);
+    CHECK(throwing.has_value());
+    CHECK(throwing->value == 7);
+    ThrowingCopy::armed = false;
+}
+
+TEST_CASE("self-assignment of a copyable payload has no effects",
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
+    // [movable.box.assign] specifies no effects for this == addressof(rhs).
+    // libstdc++'s exposition-only no-discriminant __box specialization defaults
+    // assignment for copyable T, so T's assignment operator still observes the
+    // self-assignment.
+    box_under_test::movable_box<Regular> regular(std::in_place, 1, 2);
+    auto&                               regular_ref = regular;
+
+    Regular::counters.reset();
+    regular = regular_ref;
+    CHECK(Regular::counters.copy_assign == 0);
+    CHECK(Regular::counters.copy_ctor == 0);
+    CHECK(regular->a == 1);
+    CHECK(regular->b == 2);
+
+    regular = std::move(regular_ref);
+    CHECK(Regular::counters.move_assign == 0);
+    CHECK(Regular::counters.move_ctor == 0);
+    CHECK(regular->a == 1);
+    CHECK(regular->b == 2);
 }
 
 TEST_CASE("copy assignment of a fully copyable T uses T's copy assignment operator", "[movable_box]") {
@@ -494,6 +555,73 @@ TEST_CASE("move assignment of a fully movable T uses T's move assignment operato
     CHECK(Regular::counters.dtor == 0);
     CHECK(a->a == 2);
     CHECK(a->b == 2);
+}
+
+TEST_CASE("assignment of a boxed movable T handles empty targets and sources", "[movable_box]") {
+    STATIC_REQUIRE(std::movable<BoxedMovable>);
+    STATIC_REQUIRE(std::copy_constructible<BoxedMovable>);
+    STATIC_REQUIRE_FALSE(std::copyable<BoxedMovable>);
+    STATIC_REQUIRE_FALSE(std::is_nothrow_copy_constructible_v<BoxedMovable>);
+    STATIC_REQUIRE_FALSE(std::is_nothrow_move_constructible_v<BoxedMovable>);
+
+    box_under_test::movable_box<BoxedMovable> empty(std::in_place, 1);
+    box_under_test::movable_box<BoxedMovable> source(std::in_place, 2);
+
+    BoxedMovable::armed = true;
+    CHECK_THROWS_AS(empty = source, ThrowingCopyError);
+    REQUIRE_FALSE(empty.has_value());
+
+    empty = std::move(source);
+    CHECK(empty.has_value());
+    CHECK(empty->value == 2);
+    // [movable.box.assign]p5.1: rhs.has_value() is unchanged.
+    CHECK(source.has_value());
+
+    box_under_test::movable_box<BoxedMovable> engaged_target(std::in_place, 6);
+    box_under_test::movable_box<BoxedMovable> engaged_source(std::in_place, 7);
+
+    engaged_target = std::move(engaged_source);
+    CHECK(engaged_target.has_value());
+    CHECK(engaged_target->value == 7);
+    // [movable.box.assign]p5.1: rhs.has_value() is unchanged.
+    CHECK(engaged_source.has_value());
+
+    box_under_test::movable_box<BoxedMovable> empty_source(std::in_place, 3);
+    box_under_test::movable_box<BoxedMovable> copy_source(std::in_place, 4);
+
+    BoxedMovable::armed = true;
+    CHECK_THROWS_AS(empty_source = copy_source, ThrowingCopyError);
+    REQUIRE_FALSE(empty_source.has_value());
+
+    empty_source = copy_source;
+    CHECK(empty_source.has_value());
+    CHECK(empty_source->value == 4);
+
+    box_under_test::movable_box<BoxedMovable> empty_move_source(std::in_place, 8);
+
+    BoxedMovable::armed = true;
+    CHECK_THROWS_AS(empty_move_source = copy_source, ThrowingCopyError);
+    REQUIRE_FALSE(empty_move_source.has_value());
+
+    box_under_test::movable_box<BoxedMovable> copy_from_empty_target(std::in_place, 9);
+
+    copy_from_empty_target = empty_move_source;
+    CHECK_FALSE(copy_from_empty_target.has_value());
+
+    box_under_test::movable_box<BoxedMovable> target(std::in_place, 5);
+    auto&                                    self = target;
+
+    target = self;
+    CHECK(target.has_value());
+    CHECK(target->value == 5);
+
+    target = std::move(self);
+    CHECK(target.has_value());
+    CHECK(target->value == 5);
+
+    target = std::move(empty_move_source);
+    CHECK_FALSE(target.has_value());
+    CHECK_FALSE(empty_move_source.has_value());
 }
 
 // ---------------------------------------------------------------------
@@ -532,6 +660,20 @@ TEST_CASE("valueless state propagates through copy and move construction", "[mov
     CHECK_FALSE(a.has_value());
 }
 
+TEST_CASE("engaged discriminated boxes copy and move construct the contained value", "[movable_box]") {
+    box_under_test::movable_box<ThrowingCopy> a(std::in_place, 1);
+
+    box_under_test::movable_box<ThrowingCopy> b(a);
+    CHECK(b.has_value());
+    CHECK(b->value == 1);
+
+    box_under_test::movable_box<ThrowingCopy> c(std::move(a));
+    CHECK(c.has_value());
+    CHECK(c->value == 1);
+    // [movable.box.ctor]p8: rhs.has_value() is unchanged by move construction.
+    CHECK(a.has_value());
+}
+
 TEST_CASE("assigning an engaged box into an empty box re-engages it", "[movable_box]") {
     box_under_test::movable_box<ThrowingCopy> a(std::in_place, 1);
     box_under_test::movable_box<ThrowingCopy> b(std::in_place, 2);
@@ -544,6 +686,37 @@ TEST_CASE("assigning an engaged box into an empty box re-engages it", "[movable_
     CHECK(a.has_value());
     CHECK(a->value == 2);
     CHECK(static_cast<bool>(a) == a.has_value());
+
+    box_under_test::movable_box<ThrowingCopy> c(std::in_place, 3);
+
+    ThrowingCopy::armed = true;
+    CHECK_THROWS_AS(c = b, ThrowingCopyError);
+    REQUIRE_FALSE(c.has_value());
+
+    c = std::move(b);
+    CHECK(c.has_value());
+    CHECK(c->value == 2);
+    // [movable.box.assign]p5.1: rhs.has_value() is unchanged.
+    CHECK(b.has_value());
+}
+
+TEST_CASE("assigning an empty box into an engaged box disengages it", "[movable_box]") {
+    box_under_test::movable_box<ThrowingCopy> empty(std::in_place, 1);
+    box_under_test::movable_box<ThrowingCopy> source(std::in_place, 2);
+
+    ThrowingCopy::armed = true;
+    CHECK_THROWS_AS(empty = source, ThrowingCopyError);
+    REQUIRE_FALSE(empty.has_value());
+
+    box_under_test::movable_box<ThrowingCopy> copy_target(std::in_place, 3);
+    copy_target = empty;
+    CHECK_FALSE(copy_target.has_value());
+
+    box_under_test::movable_box<ThrowingCopy> move_target(std::in_place, 4);
+    move_target = std::move(empty);
+    CHECK_FALSE(move_target.has_value());
+    // [movable.box.assign]p4.2: rhs.has_value() is unchanged.
+    CHECK_FALSE(empty.has_value());
 }
 
 // ---------------------------------------------------------------------
@@ -643,8 +816,8 @@ TEST_CASE("noexcept: copy assignment matches is_nothrow_copy_constructible_v<T> 
     using TrivialBox = box_under_test::movable_box<TrivialPayload>;
     STATIC_REQUIRE(noexcept(std::declval<TrivialBox&>() = std::declval<const TrivialBox&>()));
 
-    using NonAssignableBox = box_under_test::movable_box<NonAssignable>;
-    STATIC_REQUIRE_FALSE(noexcept(std::declval<NonAssignableBox&>() = std::declval<const NonAssignableBox&>()));
+    using ThrowingCopyBox = box_under_test::movable_box<ThrowingCopy>;
+    STATIC_REQUIRE_FALSE(noexcept(std::declval<ThrowingCopyBox&>() = std::declval<const ThrowingCopyBox&>()));
 
     using ThrowingAssignBox = box_under_test::movable_box<ThrowingCopyAssign>;
     STATIC_REQUIRE_FALSE(noexcept(std::declval<ThrowingAssignBox&>() = std::declval<const ThrowingAssignBox&>()));
@@ -742,6 +915,19 @@ TEST_CASE("a capturing lambda can be boxed, copy-assigned, and invoked through *
 
     box_a = box_b; // synthesized destroy-then-copy-construct
 
+    auto& self = box_a;
+    box_a      = self;
+    CHECK((*box_a)(3) == 103);
+
+    box_a = std::move(self);
     CHECK((*box_a)(3) == 103);
     CHECK((*box_a.operator->())(3) == 103);
+
+    auto lambda_c = make_adder(200);
+    box_under_test::movable_box<LambdaT> box_c(lambda_c);
+
+    box_a = std::move(box_c); // synthesized destroy-then-move-construct
+    CHECK((*box_a)(4) == 204);
+    // [movable.box.assign]p4.2: rhs.has_value() is unchanged.
+    CHECK(box_c.has_value());
 }
