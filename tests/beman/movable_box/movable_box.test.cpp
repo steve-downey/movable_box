@@ -25,9 +25,10 @@
 // a semantic test failing there would be a bad sign for the wording. The
 // few assertions that hold only for the *proposed public* type (deliberate
 // interface narrowings, or spec details where libstdc++'s exposition-only
-// box knowingly diverges) are guarded on that macro, each with a comment
-// saying why. This configuration requires C++23 (P2494R2 movable-box
-// semantics; in C++20 libstdc++'s __box still requires copy_constructible).
+// box knowingly diverges) are marked as Catch2 expected failures under that
+// macro, each with a comment saying why. This configuration requires C++23
+// (P2494R2 movable-box semantics; in C++20 libstdc++'s __box still requires
+// copy_constructible).
 
 #if defined(BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX)
     #include <ranges>
@@ -35,10 +36,12 @@ namespace box_under_test {
 template <class T>
 using movable_box = std::ranges::__detail::__box<T>;
 } // namespace box_under_test
+    #define BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL "[!shouldfail]"
 #else
 namespace box_under_test {
 using beman::movable_box::movable_box;
 } // namespace box_under_test
+    #define BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL
 #endif
 
 namespace {
@@ -245,8 +248,8 @@ void check_value_type_is_impl() {
 // synopsis; libstdc++'s no-discriminant __box specialization does not
 // provide it (the exposition-only type has no reason to). Checked via
 // box_has_value_type rather than excluded at compile time, so the absence
-// is reported as a failing test instead of a build failure.
-TEST_CASE("value_type names T", "[movable_box]") {
+// is reported as a Catch2 expected failure instead of a build failure.
+TEST_CASE("value_type names T", "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
     CHECK(box_has_value_type<box_under_test::movable_box<int>>);
     CHECK(box_has_value_type<box_under_test::movable_box<Regular>>);
 
@@ -254,7 +257,8 @@ TEST_CASE("value_type names T", "[movable_box]") {
     check_value_type_is_impl<box_under_test::movable_box<Regular>, Regular>();
 }
 
-TEST_CASE("default constructor is present iff default_initializable<T>", "[movable_box]") {
+TEST_CASE("default constructor is present iff default_initializable<T>",
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
     STATIC_REQUIRE(std::default_initializable<int>);
     STATIC_REQUIRE(std::default_initializable<box_under_test::movable_box<int>>);
 
@@ -266,7 +270,7 @@ TEST_CASE("default constructor is present iff default_initializable<T>", "[movab
     // own default constructors are constrained on default_initializable<T>),
     // but it is the kind of accident a standalone specification precludes.
     // Checked with a runtime CHECK rather than STATIC_REQUIRE so that the
-    // divergence is a failing test, not a build failure, under
+    // divergence is a Catch2 expected failure, not a build failure, under
     // BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
     CHECK_FALSE(std::default_initializable<NonAssignable>);
     CHECK_FALSE(std::default_initializable<box_under_test::movable_box<NonAssignable>>);
@@ -648,7 +652,7 @@ TEST_CASE("noexcept: copy assignment matches is_nothrow_copy_constructible_v<T> 
 
 TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> && "
           "(!movable<T> || is_nothrow_move_assignable_v<T>)",
-          "[movable_box]") {
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
     using RegularBox = box_under_test::movable_box<Regular>;
     STATIC_REQUIRE(noexcept(std::declval<RegularBox&>() = std::declval<RegularBox>()));
 
@@ -665,8 +669,8 @@ TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> 
     // assignment does not. Its own optional-based primary template gives the
     // weaker answer, so the two specializations disagree, and both conform.
     // Checked with a runtime CHECK_FALSE rather than STATIC_REQUIRE_FALSE so
-    // that the strengthening is a reported result, not a build failure, under
-    // BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
+    // that the strengthening is a Catch2 expected failure, not a build failure,
+    // under BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
     using ThrowingMoveBox = box_under_test::movable_box<ThrowingMove>;
     CHECK_FALSE(noexcept(std::declval<ThrowingMoveBox&>() = std::declval<ThrowingMoveBox>()));
 
