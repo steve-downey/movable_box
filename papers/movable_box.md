@@ -430,14 +430,14 @@ A reference implementation of the proposed interface is available as
 `beman.movable_box` [@beman-movable-box], with a test suite written
 against the wording below rather than against the implementation. The
 same suite compiles and runs, unmodified, against libstdc++'s
-exposition-only `std::ranges::__detail::__box`. Thirty of its
-thirty-three test cases pass there.
+exposition-only `std::ranges::__detail::__box`. Thirty-three of its
+thirty-seven test cases pass there.
 
-The three failures are not defects. [range.move.wrap] specifies the
+The four failures are not defects. [range.move.wrap] specifies the
 exposition-only type well, and an exposition-only type owes correct
 behavior only where the library uses it; every difference below is
-unobservable through the views, which is exactly why each has survived
-two standard cycles. The question this paper has to answer is not
+either unobservable through the views, or is not required by the current
+exposition-only wording. The question this paper has to answer is not
 whether they are bugs. It is what adopting the public interface would
 cost a vendor — whether the differences can be closed without breaking
 any currently conforming program, and without moving any layout.
@@ -485,6 +485,17 @@ any currently conforming program, and without moving any layout.
   suite asserted an exact `noexcept` and thereby claimed more than the
   wording can give.
 
+- **Self-assignment of a copyable payload has effects.** The
+  no-discriminant specialization defaults assignment for copyable `T`, so
+  self-assignment of the box can invoke `T`'s assignment operator. The
+  proposed wording specifies no effects when `this == addressof(rhs)`.
+  Unlike the first two differences, this can be observed through a view:
+  for example, a stateful predicate stored in `filter_view` can count
+  assignments and expose that count through `pred()`. This is not a
+  libstdc++ defect; the current exposition-only wording does not promise
+  the public type's self-assignment postcondition. It is adoption work
+  if the public interface keeps that guarantee.
+
 The first two were closed experimentally against libstdc++ 15, by
 replacing the primary template's `using optional<T>::optional;` with the
 four constructors the proposed interface actually has, and adding
@@ -496,9 +507,12 @@ included. No currently conforming program can observe either change:
 `__box` is a reserved name, and neither difference is reachable through
 a view.
 
-So the answer for libstdc++ is that adoption is a rename plus two
-mechanical edits, ABI intact. Note what carries that result: the vendor
-implements `std::movable_box` as *their* box and aliases the
+So the current libstdc++ result is narrower than "rename plus two
+mechanical edits." The interface accidents above can be closed with ABI
+intact, and the stronger exception specification needs no change, but
+the public self-assignment guarantee needs either an implementation
+change or a wording decision. What carries the ABI result is still that
+the vendor can implement `std::movable_box` as *their* box and alias the
 exposition-only name to it. That is only available because the proposed
 wording is standalone (D5) and mandates no structure. A specification
 that made `movable_box` an `optional` with patches would put every
