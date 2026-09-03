@@ -111,7 +111,7 @@ using raw_box = std::ranges::__movable_box<T>;
 // the proposed interface, added here: value_type; the constructors from
 // const T& and T&&; has_value() and operator bool; the rvalue operator*
 // overloads (the vendor's operator* overloads are not ref-qualified, so
-// they are re-declared here as the proposed &/const& signatures rather
+// they are redeclared here as the proposed &/const& signatures rather
 // than brought in by a using-declaration, which cannot mix ref-qualified
 // overloads with unqualified ones).
 template <class T>
@@ -174,7 +174,7 @@ using raw_box = std::ranges::_Movable_box<T>;
 // relative to the proposed interface, added here: value_type; the
 // constructors from const T& and T&&; has_value(); operator->; the rvalue
 // operator* overloads (as for libc++, the vendor's operator* overloads
-// are not ref-qualified and are re-declared with the proposed
+// are not ref-qualified and are redeclared with the proposed
 // signatures). The forwarding in_place constructor deliberately mirrors
 // the vendor's unconstrained one; the resulting trait-level divergence is
 // tagged ..._XFAIL_IN_PLACE_CONSTRAINT rather than papered over.
