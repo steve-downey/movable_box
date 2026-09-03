@@ -2,7 +2,8 @@
 
 #include <beman/movable_box/config.hpp>
 #include <catch2/catch_all.hpp>
-#include <beman/movable_box/movable_box.hpp>
+
+#include "box_under_test.hpp"
 
 #include <concepts>
 #include <memory>
@@ -17,32 +18,21 @@
 // the facts supplied for this reference implementation guarantee a specific
 // sizeof/triviality outcome.
 //
-// The box under test is beman::movable_box::movable_box by default. With
-// BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX defined (see the conformance target
-// in CMakeLists.txt), the same suite instead runs against libstdc++'s
-// exposition-only box, std::ranges::__detail::__box: the paper claims its
-// proposed surface is a strict subset of every shipping implementation, so
-// a semantic test failing there would be a bad sign for the wording. The
-// few assertions that hold only for the *proposed public* type (deliberate
-// interface narrowings, or spec details where libstdc++'s exposition-only
-// box knowingly diverges) are marked as Catch2 expected failures under that
-// macro, each with a comment saying why. This configuration requires C++23
-// (P2494R2 movable-box semantics; in C++20 libstdc++'s __box still requires
-// copy_constructible).
-
-#if defined(BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX)
-    #include <ranges>
-namespace box_under_test {
-template <class T>
-using movable_box = std::ranges::__detail::__box<T>;
-} // namespace box_under_test
-    #define BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL "[!shouldfail]"
-#else
-namespace box_under_test {
-using beman::movable_box::movable_box;
-} // namespace box_under_test
-    #define BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL
-#endif
+// The box under test is beman::movable_box::movable_box by default. The
+// conformance targets in CMakeLists.txt instead run the same suite against
+// each vendor's exposition-only box -- libstdc++'s
+// std::ranges::__detail::__box (raw), and libc++'s
+// std::ranges::__movable_box and the Microsoft STL's
+// std::ranges::_Movable_box (each through a purely additive shim): the
+// paper claims the proposed surface can be provided by every shipping
+// implementation as its existing box, so a semantic test failing there
+// would be a bad sign for the wording. Assertions that hold only for the
+// *proposed public* type (deliberate interface narrowings, or spec details
+// where a vendor's exposition-only box knowingly diverges) are tagged as
+// Catch2 expected failures per divergence; box_under_test.hpp selects the
+// box and documents each divergence tag. These configurations require
+// C++23 (P2494R2 movable-box semantics; in C++20 the vendor boxes still
+// require copy_constructible).
 
 namespace {
 
@@ -309,7 +299,9 @@ void check_value_type_is_impl() {
 // provide it (the exposition-only type has no reason to). Checked via
 // box_has_value_type rather than excluded at compile time, so the absence
 // is reported as a Catch2 expected failure instead of a build failure.
-TEST_CASE("value_type names T", "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
+// (libc++ and the MS STL lack value_type too, but their shims add it, so
+// only the raw libstdc++ configuration expects the failure.)
+TEST_CASE("value_type names T", "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_VALUE_TYPE) {
     CHECK(box_has_value_type<box_under_test::movable_box<int>>);
     CHECK(box_has_value_type<box_under_test::movable_box<Regular>>);
 
@@ -318,7 +310,7 @@ TEST_CASE("value_type names T", "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX
 }
 
 TEST_CASE("default constructor is present iff default_initializable<T>",
-          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_DEFAULT_CTOR) {
     STATIC_REQUIRE(std::default_initializable<int>);
     STATIC_REQUIRE(std::default_initializable<box_under_test::movable_box<int>>);
 
@@ -346,11 +338,21 @@ TEST_CASE("value constructors from const T& and T&& are explicit and non-templat
     STATIC_REQUIRE_FALSE(std::is_convertible_v<Regular&&, Box>);
 }
 
-TEST_CASE("in_place constructor is present and constrained on is_constructible_v<T, Args...>", "[movable_box]") {
+TEST_CASE("in_place constructor is present and constrained on is_constructible_v<T, Args...>",
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_IN_PLACE_CONSTRAINT) {
     using Box = box_under_test::movable_box<Regular>;
 
     STATIC_REQUIRE(std::is_constructible_v<Box, std::in_place_t, int, int>);
-    STATIC_REQUIRE_FALSE(std::is_constructible_v<Box, std::in_place_t, Regular*>);
+
+    // The MS STL's in_place constructor template is unconstrained, so there
+    // is_constructible_v answers true for argument lists Regular cannot be
+    // constructed from (the error would surface only on instantiation).
+    // Unobservable through the views, which construct their boxes from
+    // well-formed argument lists; additive for a vendor to close. Checked
+    // with a runtime CHECK_FALSE rather than STATIC_REQUIRE_FALSE so the
+    // divergence is a Catch2 expected failure, not a build failure, under
+    // BEMAN_MOVABLE_BOX_TEST_MSVC_BOX.
+    CHECK_FALSE(std::is_constructible_v<Box, std::in_place_t, Regular*>);
 }
 
 TEST_CASE("copy constructor is present iff copy_constructible<T>", "[movable_box]") {
@@ -573,7 +575,7 @@ TEST_CASE("self-assignment is a no-op", "[movable_box]") {
     CHECK(a->value == 42);
 
     box_under_test::movable_box<ThrowingCopy> throwing(std::in_place, 7);
-    auto&                                    throwing_ref = throwing;
+    auto&                                     throwing_ref = throwing;
 
     ThrowingCopy::armed = true;
     throwing            = throwing_ref;
@@ -589,13 +591,14 @@ TEST_CASE("self-assignment is a no-op", "[movable_box]") {
 }
 
 TEST_CASE("self-assignment of a copyable payload has no effects",
-          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_SELF_ASSIGN) {
     // [movable.box.assign] specifies no effects for this == addressof(rhs).
-    // libstdc++'s exposition-only no-discriminant __box specialization defaults
-    // assignment for copyable T, so T's assignment operator still observes the
-    // self-assignment.
+    // All three vendors diverge for copyable T: libstdc++'s and libc++'s
+    // no-discriminant specializations default the assignment, and the MS
+    // STL's delegates to T's assignment unconditionally, so T's assignment
+    // operator still observes the self-assignment.
     box_under_test::movable_box<Regular> regular(std::in_place, 1, 2);
-    auto&                               regular_ref = regular;
+    auto&                                regular_ref = regular;
 
     Regular::counters.reset();
     regular = regular_ref;
@@ -689,7 +692,24 @@ TEST_CASE("assignment of a boxed movable T handles empty targets and sources", "
     CHECK_FALSE(copy_from_empty_target.has_value());
 
     box_under_test::movable_box<BoxedMovable> target(std::in_place, 5);
-    auto&                                    self = target;
+
+    target = std::move(empty_move_source);
+    CHECK_FALSE(target.has_value());
+    CHECK_FALSE(empty_move_source.has_value());
+}
+
+TEST_CASE("self-assignment of a boxed movable payload is a no-op",
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_SELF_ASSIGN_MOVABLE) {
+    // [movable.box.assign]p5 specifies no effects when this == addressof(rhs),
+    // including when movable<T> is modeled. libc++'s discriminated
+    // __movable_box defaults its move assignment for movable T (deferring to
+    // optional's, which has no self-check), and the MS STL's movable branches
+    // assign unconditionally, so T's move assignment observes the self-move:
+    // BoxedMovable's own move-assign wipes its source, and the value is lost.
+    // libstdc++'s optional-based primary defines its own guarded assignment
+    // operators and passes.
+    box_under_test::movable_box<BoxedMovable> target(std::in_place, 5);
+    auto&                                     self = target;
 
     target = self;
     CHECK(target.has_value());
@@ -698,10 +718,6 @@ TEST_CASE("assignment of a boxed movable T handles empty targets and sources", "
     target = std::move(self);
     CHECK(target.has_value());
     CHECK(target->value == 5);
-
-    target = std::move(empty_move_source);
-    CHECK_FALSE(target.has_value());
-    CHECK_FALSE(empty_move_source.has_value());
 }
 
 // ---------------------------------------------------------------------
@@ -930,7 +946,7 @@ TEST_CASE("noexcept: copy assignment matches is_nothrow_copy_constructible_v<T> 
 
 TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> && "
           "(!movable<T> || is_nothrow_move_assignable_v<T>)",
-          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_XFAIL) {
+          "[movable_box]" BEMAN_MOVABLE_BOX_TEST_XFAIL_NOEXCEPT_MOVE_ASSIGN) {
     using RegularBox = box_under_test::movable_box<Regular>;
     STATIC_REQUIRE(noexcept(std::declval<RegularBox&>() = std::declval<RegularBox>()));
 
@@ -940,15 +956,16 @@ TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> 
     // conformance test may require noexcept(false). They record what this
     // reference implementation does, not what the proposal guarantees.
     //
-    // libstdc++ exercises exactly that freedom: for movable T its
-    // no-discriminant __box defaults the move assignment, whose noexcept
-    // follows T's move *assignment* alone -- stronger than the
-    // optional-derived formula when T's move constructor throws but its move
-    // assignment does not. Its own optional-based primary template gives the
-    // weaker answer, so the two specializations disagree, and both conform.
-    // Checked with a runtime CHECK_FALSE rather than STATIC_REQUIRE_FALSE so
-    // that the strengthening is a Catch2 expected failure, not a build failure,
-    // under BEMAN_MOVABLE_BOX_TEST_LIBSTDCXX_BOX.
+    // All three vendors exercise exactly that freedom for movable T in
+    // their no-discriminant implementations, whose move assignment follows
+    // T's move *assignment* alone (libstdc++ and libc++ default it; the MS
+    // STL documents its formula as "strengthened") -- stronger than the
+    // proposed formula when T's move constructor throws but its move
+    // assignment does not. libstdc++'s optional-based primary template
+    // gives the weaker answer, so its two specializations disagree, and
+    // both conform. Checked with a runtime CHECK_FALSE rather than
+    // STATIC_REQUIRE_FALSE so that the strengthening is a Catch2 expected
+    // failure, not a build failure, under the vendor configurations.
     using ThrowingMoveBox = box_under_test::movable_box<ThrowingMove>;
     CHECK_FALSE(noexcept(std::declval<ThrowingMoveBox&>() = std::declval<ThrowingMoveBox>()));
 
@@ -997,6 +1014,67 @@ TEST_CASE("constexpr coverage compiles and evaluates as expected", "[movable_box
 }
 
 // ---------------------------------------------------------------------
+// Vendor shim integrity
+// ---------------------------------------------------------------------
+
+#if defined(BEMAN_MOVABLE_BOX_TEST_VENDOR_SHIM)
+
+namespace {
+
+// The libc++ and MS STL configurations run the suite through a shim that
+// derives from the vendor's box and adds only the proposed members the
+// vendor spells differently or lacks (see box_under_test.hpp). The shim is
+// the candidate additive adoption patch, so it must provably change
+// nothing: no size, no special-member availability, no triviality, no
+// exception specification. A payload for which any of these diverges
+// would mean the "additions" were not additive after all.
+template <class T>
+constexpr bool shim_is_purely_additive() {
+    using Shim = box_under_test::movable_box<T>;
+    using Raw  = box_under_test::raw_box<T>;
+
+    static_assert(sizeof(Shim) == sizeof(Raw));
+    static_assert(alignof(Shim) == alignof(Raw));
+
+    static_assert(std::is_default_constructible_v<Shim> == std::is_default_constructible_v<Raw>);
+    static_assert(std::is_nothrow_default_constructible_v<Shim> == std::is_nothrow_default_constructible_v<Raw>);
+    static_assert(std::is_copy_constructible_v<Shim> == std::is_copy_constructible_v<Raw>);
+    static_assert(std::is_move_constructible_v<Shim> == std::is_move_constructible_v<Raw>);
+    static_assert(std::is_nothrow_move_constructible_v<Shim> == std::is_nothrow_move_constructible_v<Raw>);
+    static_assert(std::is_copy_assignable_v<Shim> == std::is_copy_assignable_v<Raw>);
+    static_assert(std::is_nothrow_copy_assignable_v<Shim> == std::is_nothrow_copy_assignable_v<Raw>);
+    static_assert(std::is_move_assignable_v<Shim> == std::is_move_assignable_v<Raw>);
+    static_assert(std::is_nothrow_move_assignable_v<Shim> == std::is_nothrow_move_assignable_v<Raw>);
+
+    static_assert(std::is_trivially_copy_constructible_v<Shim> == std::is_trivially_copy_constructible_v<Raw>);
+    static_assert(std::is_trivially_move_constructible_v<Shim> == std::is_trivially_move_constructible_v<Raw>);
+    static_assert(std::is_trivially_destructible_v<Shim> == std::is_trivially_destructible_v<Raw>);
+    static_assert(std::is_trivially_copy_assignable_v<Shim> == std::is_trivially_copy_assignable_v<Raw>);
+    static_assert(std::is_trivially_move_assignable_v<Shim> == std::is_trivially_move_assignable_v<Raw>);
+    static_assert(std::is_trivially_copyable_v<Shim> == std::is_trivially_copyable_v<Raw>);
+
+    return true;
+}
+
+} // namespace
+
+TEST_CASE("the vendor shim adds no state and changes no triviality", "[movable_box]") {
+    STATIC_REQUIRE(shim_is_purely_additive<int>());
+    STATIC_REQUIRE(shim_is_purely_additive<Regular>());
+    STATIC_REQUIRE(shim_is_purely_additive<NonAssignable>());
+    STATIC_REQUIRE(shim_is_purely_additive<TrivialPayload>());
+    STATIC_REQUIRE(shim_is_purely_additive<ConstMember>());
+    STATIC_REQUIRE(shim_is_purely_additive<MoveOnly>());
+    STATIC_REQUIRE(shim_is_purely_additive<ThrowingCopy>());
+    STATIC_REQUIRE(shim_is_purely_additive<ThrowingCopyAssign>());
+    STATIC_REQUIRE(shim_is_purely_additive<ThrowingMove>());
+    STATIC_REQUIRE(shim_is_purely_additive<ThrowingMoveAssign>());
+    STATIC_REQUIRE(shim_is_purely_additive<BoxedMovable>());
+}
+
+#endif // BEMAN_MOVABLE_BOX_TEST_VENDOR_SHIM
+
+// ---------------------------------------------------------------------
 // Capturing lambda end-to-end
 // ---------------------------------------------------------------------
 
@@ -1028,7 +1106,7 @@ TEST_CASE("a capturing lambda can be boxed, copy-assigned, and invoked through *
     CHECK((*box_a)(3) == 103);
     CHECK((*box_a.operator->())(3) == 103);
 
-    auto lambda_c = make_adder(200);
+    auto                                 lambda_c = make_adder(200);
     box_under_test::movable_box<LambdaT> box_c(lambda_c);
 
     box_a = std::move(box_c); // synthesized destroy-then-move-construct
