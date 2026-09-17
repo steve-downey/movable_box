@@ -12,10 +12,10 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 ![Standard Target](https://github.com/bemanproject/beman/blob/main/images/badges/cpp29.svg)
 <!-- markdownlint-restore -->
 
-`beman.movable_box` provides `movable_box<T>`, the ranges *movable-box* wrapper: a
-`move_constructible` object wrapper that synthesizes copy/move assignment (via
-destroy-then-construct when `T` itself is not assignable) so that the result always models
-`movable`, as a public, non-exposition-only library type.
+`beman.movable_box` provides `movable_box<T>`, a public library version of the ranges
+exposition-only *movable-box*. It wraps a `move_constructible` object and synthesizes copy
+and move assignment by destroy-then-construct when `T` itself is not assignable, so the
+result always models `movable`.
 
 **Implements**: `std::movable_box` proposed in the draft paper
 ([papers/movable_box.md](papers/movable_box.md)); paper number not yet assigned.
@@ -29,8 +29,8 @@ destroy-then-construct when `T` itself is not assignable) so that the result alw
 ## Usage
 
 `movable_box<T>` stores a `move_constructible` object and gives it assignability, even when `T`
-itself is not assignable -- exactly the tool range adaptors use to hold predicates, projections,
-and transformation functions inside otherwise-`movable` view types.
+itself is not assignable. Range adaptors use it to hold predicates and projections inside
+otherwise-`movable` view types.
 
 ```cpp
 #include <beman/movable_box/movable_box.hpp>

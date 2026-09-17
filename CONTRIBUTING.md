@@ -37,7 +37,7 @@ If the presets are not suitable for your use case, a traditional CMake invocatio
 provide more configurability.
 
 To configure, build and test the project manually, you can run this set of commands. Note
-that this requires GoogleTest to be installed.
+that this requires Catch2 to be installed.
 
 ```bash
 cmake \
@@ -65,7 +65,7 @@ The best way to install the project's dependencies is to use the vcpkg workflow.
 To do so, make sure vcpkg is installed and `VCPKG_ROOT` is defined in your environment,
 then specify
 `-DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"`. Vcpkg will handle
-the project's dependencies, including GoogleTest.
+the project's dependencies, including Catch2.
 
 Example commands:
 
@@ -89,7 +89,7 @@ configure beman.movable_box to fetch them automatically via CMake FetchContent.
 
 To do so, specify
 `-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=./infra/cmake/use-fetch-content.cmake`. This will
-bring in GoogleTest automatically along with any other dependency the project may require.
+bring in Catch2 automatically along with any other dependency the project may require.
 
 Example commands:
 

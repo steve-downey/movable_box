@@ -46,12 +46,11 @@ Every ranges-adjacent library reimplements one. Anyone writing a
 conforming view outside the standard library must write one.
 
 This paper proposes making the type available to users as
-`std::movable_box`, with two deliberate constraints on the proposal
-itself:
+`std::movable_box`, with two constraints on the proposal itself:
 
 1. **The interface is exactly the usage surface of clause [ranges].**
-   The type supports precisely the operations the standard library's
-   views perform on *movable-box* today — no more. It is a tool for
+   The type supports the operations the standard library's views
+   perform on *movable-box* today, and no more. It is a tool for
    implementing range types, not a new general-purpose maybe-type.
 
 2. **The specification is standalone.** [range.move.wrap] specifies
@@ -85,8 +84,8 @@ object type with assignability: if `T` is copy constructible but not
 `copyable`, copy assignment is synthesized as destroy-then-copy-construct;
 if `T` is not `movable`, move assignment is synthesized as
 destroy-then-move-construct. A disengaged state exists, but it is an
-exception artifact — reachable only when a synthesized operation exits
-via an exception — not a domain state. In this respect the type is the
+exception artifact (reachable only when a synthesized operation exits
+via an exception), not a domain state. In this respect the type is the
 inverse of `optional`: its default state is engaged (a value-initialized
 `T`), and emptiness is never requested, only suffered.
 
@@ -103,10 +102,10 @@ Microsoft STL has `_Movable_box`. The design originates in range-v3's
 `semiregular_box` [@range-v3], which user code has been borrowing or
 reimplementing for the better part of a decade.
 
-Users writing their own views and range adaptors — a task the ranges
-design explicitly intends to support, and for which `view_interface` and
-`range_adaptor_closure` were made public — need exactly this component
-to store their callables and values. Today their choices are:
+Users writing their own views and range adaptors need this component
+to store their callables and values. Writing them is a task the ranges
+design intends to support; `view_interface` and `range_adaptor_closure`
+were made public for it. Today their choices are:
 
 1. Reimplement it, including the subtle valueless-by-exception corner
    cases and the storage optimization.
@@ -140,9 +139,9 @@ clause [ranges]. An audit gives:
   (e.g., `filter_view::pred()`), motivating `has_value()` and
   `operator bool`.
 
-That is the entire interface proposed. Everything else `optional`
-offers is deliberately absent; see the design decisions and the
-consolidated non-goals in [D9](#d9-non-goals-consolidated).
+That is the entire interface proposed. Everything else `optional` offers
+is absent; see the design decisions and the consolidated non-goals in
+[D9](#d9-non-goals-consolidated).
 
 ## History
 
@@ -173,8 +172,8 @@ context; the empty state drives most of these, because it is an
 exception artifact rather than a domain state, and any operation whose
 semantics turn on it computes over something that should not have been
 reachable. `movable_box<T&>` is ill-formed for the same reason (D7).
-This, and not an audit of what the views happen to call, is the warrant
-for the interface in D6 and the non-goals in D9.
+This is the warrant for the interface in D6 and the non-goals in D9.
+An audit of what the views happen to call is not.
 
 **A drop-in for what ships now.** A vendor must be able to implement
 `std::movable_box` as their existing box and alias the exposition-only
@@ -182,20 +181,20 @@ name to it, with no view changing layout or behavior. This is why the
 wording mandates no structure (D5) and why nothing in the interface can
 make the empty state reachable on demand (D6).
 
-This one is a condition on the paper, not a preference expressed by it.
+This one is a condition on the paper. The other two are preferences.
 If adopting `std::movable_box` would mandate an ABI break in libstdc++,
-libc++, or the Microsoft STL, the proposal should be rejected, and the
-author will withdraw it. There is no version of this component worth a
-break: the whole claim is that the type already exists and users cannot
-reach it. A vocabulary type is not worth relaying every view in the
-standard library. See [Implementation Experience](#implementation-experience)
+libc++, or the Microsoft STL, the proposal should be rejected, and I
+will withdraw it. There is no version of this component worth a break:
+the whole claim is that the type already exists and users can not
+reach it. A vocabulary type is not worth breaking the ABI of every view
+in the standard library. See [Implementation Experience](#implementation-experience)
 for what has been confirmed and what has not.
 
-**A one-time cost, not an ongoing one.** Adoption should be a rename
-plus a bounded, mechanical set of edits, after which library
-implementors owe this component nothing further. A delta specification
-fails this test on its own: it makes every future change to `optional`
-into a standing question about `movable_box` (D5).
+**Adoption is a one-time cost.** It should be a rename plus a bounded,
+mechanical set of edits, after which library implementers owe this
+component nothing further. A delta specification fails this test on its
+own: it makes every future change to `optional` into a standing question
+about `movable_box` (D5).
 
 ## D1: No semantic changes
 
@@ -211,8 +210,8 @@ Proposed: `movable_box`.
 
 The working draft has called this type *semiregular-box*, *copyable-box*,
 and *movable-box* as its constraints evolved; the current name accurately
-describes what the wrapper guarantees — the result always models
-`movable` — and matches the name users of the working draft and of
+describes what the wrapper guarantees (the result always models
+`movable`) and matches the name users of the working draft and of
 cppreference already know.
 
 Alternatives considered:
@@ -230,11 +229,11 @@ Proposed: `namespace std`.
 
 Although the specification currently lives in [ranges], nothing about
 the type's semantics is ranges-specific. Placing it in `std::ranges`
-would be defensible given the deliberately ranges-shaped scope of this
-proposal; the author weakly prefers `std`, matching `view_interface`'s
-sibling vocabulary components (`in_place_t`, the concepts) and avoiding
-a second-class name if other library clauses later adopt it. LEWG
-direction welcome.
+would be defensible, given the ranges-shaped scope of this proposal.
+However, I have a weak preference for `std`, matching
+`view_interface`'s sibling vocabulary components (`in_place_t`, the
+concepts) and avoiding a second-class name if other library clauses
+later adopt it. LEWG direction welcome.
 
 ## D4: Header
 
@@ -247,7 +246,7 @@ not ranges-specific. `<utility>` is where small, broadly applicable
 vocabulary components live, and the addition is tiny.
 
 Alternatives: a new `<movable_box>` header (defensible under the
-one-component-one-header trend; the author is not opposed), `<optional>`
+one-component-one-header trend; I am not opposed), `<optional>`
 (rejected: implies a structural relationship this paper explicitly
 disclaims), `<ranges>` (rejected per D3).
 
@@ -255,8 +254,8 @@ disclaims), `<ranges>` (rejected per D3).
 
 [range.move.wrap] says *movable-box* "behaves exactly like
 `optional<T>`" with enumerated differences. For an exposition-only type
-whose full usage surface is visible to the specification's authors, that
-is an economical technique. For a public type it is the wrong shape,
+whose every use is visible to the specification's authors, that is an
+economical technique. However, for a public type it is the wrong shape,
 twice over:
 
 - **It reads as a structural mandate.** Users (and conceivably
@@ -275,13 +274,13 @@ The proposed wording is therefore self-contained: it defines "contains
 a value" for `movable_box` directly, specifies each member's effects in
 its own right, and never references `optional`. This costs perhaps a
 page of wording and buys structural independence. It also means the
-disengaged state's semantics are stated where they belong — as
-postconditions of the synthesized assignments — rather than inherited
+disengaged state's semantics are stated where they belong, as
+postconditions of the synthesized assignments, rather than inherited
 from a type whose disengaged state is a first-class feature.
 
 ## D6: Interface — the observed usage surface
 
-Proposed: exactly the operations enumerated in [Scope](#scope-exactly-the-standard-librarys-usage-no-more):
+Proposed: the operations enumerated in [Scope](#scope-exactly-the-standard-librarys-usage-no-more):
 default construction, direct construction from `const T&`/`T&&`,
 `in_place` construction, the special member functions with the
 synthesized assignments, `operator*`, `operator->`, `has_value`, and
@@ -290,17 +289,17 @@ synthesized assignments, `operator*`, `operator->`, `has_value`, and
 Two things point the same way:
 
 - **Loud failure.** The goal is to hand range-type implementers the tool
-  the standard library uses, not to grow a second `optional`. An
+  the standard library uses. It is not to grow a second `optional`. An
   operation is omitted where offering it would answer a question the
   type has no business answering — and answer it plausibly, which is
   worse than not answering. Absent operations are a compile error at the
   point of misuse. That the views do not call them is corroboration, not
   the argument: the views are not the constituency this paper is for.
 
-- **The storage optimization.** [range.move.wrap] p2's recommended
-  practice — store only a `T`, no discriminant, whenever the
-  synthesized assignments cannot create an empty state — is only
-  possible because nothing can disengage the box on purpose. Exposing
+- **The storage optimization.** [range.move.wrap] p2 recommends storing
+  only a `T`, with no discriminant, whenever the synthesized
+  assignments can not create an empty state. That is only possible
+  because nothing can disengage the box on purpose. Exposing
   `reset()` or `nullopt` construction would make the empty state
   reachable on demand, forcing a discriminant into every
   specialization and breaking the ABI of every shipping view. The
@@ -314,7 +313,7 @@ honesty of `variant::valueless_by_exception`.
 
 The constructors from `const T&` and `T&&` are proposed as `explicit`
 and non-template. The ranges clauses use only direct-initialization
-from exactly `T`, so implicit conversion and a templated converting
+from `T` itself, so implicit conversion and a templated converting
 constructor (with its attendant constraint and CTAD questions) are not
 needed and not proposed.
 
@@ -328,12 +327,12 @@ will be asked about, so:
 - **No references.** With `optional<T&>` adopted for C++26, the
   question will be asked. `movable_box<T&>` remains ill-formed:
   synthesizing assignability over a reference is incoherent (rebind
-  vs. assign-through is precisely the swamp this type exists to avoid),
-  and no view needs it.
-- **No immovable types.** `move_constructible` is a floor chosen
-  deliberately by [@P2494R2]. Boxing a pinned type is a different
-  component with different costs — closer to `indirect` ([@P3019R11])
-  territory — and is out of scope.
+  vs. assign-through is the swamp this type exists to avoid), and no
+  view needs it.
+- **No immovable types.** `move_constructible` is the floor [@P2494R2]
+  chose. Boxing a pinned type is a different component with different
+  costs, closer to `indirect` ([@P3019R11]) territory, and is out of
+  scope.
 
 ## D8: Storage and triviality
 
@@ -349,25 +348,25 @@ trivial. These are implementable in the presence of a discriminant
 (as `optional` demonstrates) and matter in practice: a trivially
 copyable `movable_box<T>` keeps views of trivially copyable payloads
 trivially copyable, with the ABI and calling-convention consequences
-that implies. The assignment operators are additionally specified
-trivial under the conditions of [optional.assign], so trivially
-copyable (and trivially assignable) payloads yield trivially copyable
-boxes — and, transitively, trivially copyable views.
+that implies. The assignment operators are also specified trivial under
+the conditions of [optional.assign], so trivially copyable (and
+trivially assignable) payloads yield trivially copyable boxes — and,
+transitively, trivially copyable views.
 
 ## D9: Non-goals, consolidated
 
-The following are deliberately absent. Each is additive, and none is
-precluded for the future — but the reason each is absent now is that
+The following are absent. Each is additive, and none is precluded for
+the future, but the reason each is absent now is that
 supplying it would answer a question over the empty state, which is an
 exception artifact and not a domain state. A wrong answer that compiles
 is worse than no answer.
 
 - Value assignment (`operator=(U&&)`) — also inconsistent as specified
   for `optional`, whose version is constrained on `is_assignable_v`,
-  which would vanish for exactly the types this box serves.
+  which would vanish for the types this box serves.
 - `emplace` and `reset` — used only *within* the specification of the
-  synthesized assignments; not part of the public surface. `reset` would
-  additionally make the empty state reachable on demand, forcing a
+  synthesized assignments; not part of the public interface. `reset`
+  would also make the empty state reachable on demand, forcing a
   discriminant into every specialization (D6).
 - `value()`, `value_or()`, monadic operations, `nullopt` in any form,
   `bad_optional_access` — the empty state is not a domain state, and
@@ -387,14 +386,14 @@ is worse than no answer.
   view uses one. This is the weakest entry in this list: it answers no
   question about emptiness, and its absence is a compile error for a use
   the type is meant for rather than one it is not. It is omitted to
-  match what ships, and the author would not oppose adding it.
+  match what ships, and I would not oppose adding it.
 - A `copyable_box` — [@P2494R2] subsumed it: when
   `copy_constructible<T>` holds, `movable_box<T>` is copyable.
 - *non-propagating-cache* — the box's sibling in [range.adaptor.helpers]
-  has its own deliberately different semantics (copies produce empty)
-  and is not proposed. This paper is not a general program to
-  standardize exposition-only machinery; it is a claim that this one
-  component has proven, portable demand.
+  has different semantics (copies produce empty) and is not proposed.
+  This paper is not a general program to standardize exposition-only
+  helpers; it is a claim that this one component has proven, portable
+  demand.
 
 ## D10: `constexpr`
 
@@ -421,10 +420,10 @@ behavior, layout, or ABI of any ranges component.
 
 # Implementation Experience
 
-Three independent implementations of exactly this type ship today inside
+Three independent implementations of this type ship today inside
 libstdc++, libc++, and the Microsoft STL, exercised by the entire range
-adaptor test surface of each. range-v3's `semiregular_box` [@range-v3]
-is the design's origin and has a decade of field experience.
+adaptor test suite of each. range-v3's `semiregular_box` [@range-v3] is
+the design's origin and has a decade of field experience.
 
 A reference implementation of the proposed interface is available as
 `beman.movable_box` [@beman-movable-box], with a test suite written
@@ -439,7 +438,7 @@ behavior only where the library uses it; every difference below is
 either unobservable through the views, or is not required by the current
 exposition-only wording. The question this paper has to answer is not
 whether they are bugs. It is what adopting the public interface would
-cost a vendor — whether the differences can be closed without breaking
+cost a vendor: whether the differences can be closed without breaking
 any currently conforming program, and without moving any layout.
 
 - **`value_type` is absent.** The no-discriminant `__box`
@@ -461,22 +460,23 @@ any currently conforming program, and without moving any layout.
   ```
 
   The box's own default constructor is constrained correctly, on
-  `default_initializable<T>`. But the `optional`-based primary template
-  publicly inherits `optional`'s constructors, and `optional`'s default
-  constructor is unconstrained. Where `T` is default-initializable the
-  box's own constructor is preferred and the box is engaged; where it is
-  not, the box's own constructor drops out of the overload set and the
-  inherited one is all that is left. This is the delta-specification
+  `default_initializable<T>`. However, the `optional`-based primary
+  template publicly inherits `optional`'s constructors, and
+  `optional`'s default constructor is unconstrained. Where `T` is
+  default-initializable the box's own constructor is preferred and the
+  box is engaged; where it is not, the box's own constructor drops out
+  of the overload set and the inherited one is all that is left. This
+  is the delta-specification
   hazard of D5, caught in the wild: the interface `optional` exports was
-  never chosen, only inherited. The views cannot reach it — their own
+  never chosen, only inherited. The views can not reach it; their own
   default constructors are already constrained on
-  `default_initializable<T>` — so within [ranges] the box is correct.
+  `default_initializable<T>`, so within [ranges] the box is correct.
 
 - **The move assignment is stronger than specified.** For a movable `T`
   whose move constructor may throw, the no-discriminant specialization
   defaults move assignment, so its exception specification follows `T`'s
   move *assignment* alone and is `noexcept(true)`, where the
-  `optional`-based primary template — and [range.move.wrap] — give
+  `optional`-based primary template (and [range.move.wrap]) give
   `noexcept(false)`. libstdc++'s two specializations disagree with each
   other, and both conform: [res.on.exception.handling] p5 permits an
   implementation to strengthen any non-virtual function's exception
@@ -520,13 +520,13 @@ view's layout back in play.
 
 This has been confirmed for one implementation of three. libc++'s
 `std::ranges::__movable_box` and the Microsoft STL's `_Movable_box` have
-not been tested, and the author intends to run the suite against both
-before asking LEWG to advance the paper.
+not been tested, and I intend to run the suite against both before
+asking LEWG to advance the paper.
 
 That is a condition on the proposal rather than an outstanding chore.
 Per the drop-in principle, a required ABI break in any of the three sinks
-it. The libstdc++ result is therefore evidence that adoption *can* be
-free, not that it is; two thirds of the claim is unverified, and the
+it. The libstdc++ result is therefore evidence only that adoption *can*
+be free; two thirds of the claim is unverified, and the
 paper should not be advanced on one data point. LEWG should read the
 result above as a demonstration of method — patch the vendor's header,
 compile every view specified in terms of *movable-box*, compare layouts
