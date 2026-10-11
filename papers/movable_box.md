@@ -823,6 +823,19 @@ one — trivially copyable for trivially copyable, trivially assignable
 triviality *Remarks* cover only the constructors and the destructor,
 and the reference implementation implements it.
 
+The constructor triviality *Remarks* hold whether or not the box carries
+a discriminant. Trivial copy and move constructors cannot throw, but a
+`T` with one of them trivial can still need the empty state when the
+other may throw: a non-assignable `T` with a trivial copy constructor
+and a potentially-throwing move constructor, for instance. The box's
+copy constructor must then be trivial in the discriminated layout too.
+Copying the contained value and the discriminant as they stand gives the
+specified effects whether or not a value is present, so this costs
+nothing. `optional`'s constructors already behave this way, and both
+libstdc++ and libc++ inherit it by falling back to `optional`; the
+reference implementation defaults the corresponding constructor
+directly.
+
 ## [range.move.wrap]
 
 Replace the contents of [range.move.wrap] as follows:
