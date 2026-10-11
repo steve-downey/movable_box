@@ -255,6 +255,27 @@ struct BoxedCounted {
     ~BoxedCounted() { ++counters.dtor; }
 };
 
+// Not assignable, with one trivial constructor and the other throwing: the
+// throwing one forces a discriminant, while the trivial one must still make
+// the box's corresponding constructor trivial ([movable.box.ctor] Remarks).
+struct TrivialCopyThrowingMove {
+    int value;
+    explicit TrivialCopyThrowingMove(int v) : value(v) {}
+    TrivialCopyThrowingMove(const TrivialCopyThrowingMove&) = default;
+    TrivialCopyThrowingMove(TrivialCopyThrowingMove&& o) noexcept(false) : value(o.value) {}
+    TrivialCopyThrowingMove& operator=(const TrivialCopyThrowingMove&) = delete;
+    TrivialCopyThrowingMove& operator=(TrivialCopyThrowingMove&&)      = delete;
+};
+
+struct TrivialMoveThrowingCopy {
+    int value;
+    explicit TrivialMoveThrowingCopy(int v) : value(v) {}
+    TrivialMoveThrowingCopy(const TrivialMoveThrowingCopy& o) noexcept(false) : value(o.value) {}
+    TrivialMoveThrowingCopy(TrivialMoveThrowingCopy&&) = default;
+    TrivialMoveThrowingCopy& operator=(const TrivialMoveThrowingCopy&) = delete;
+    TrivialMoveThrowingCopy& operator=(TrivialMoveThrowingCopy&&)      = delete;
+};
+
 // Detects whether box_under_test::movable_box<T> is a valid type: used
 // to check the constraints in D7 without triggering a hard compile error
 // for the negative cases.
@@ -840,6 +861,31 @@ TEST_CASE("destructor triviality propagates from T even when a discriminant is p
     STATIC_REQUIRE(std::is_trivially_destructible_v<ThrowingCopy>);
     STATIC_REQUIRE(std::is_trivially_destructible_v<box_under_test::movable_box<ThrowingCopy>>);
     STATIC_REQUIRE_FALSE(std::is_trivially_copy_constructible_v<box_under_test::movable_box<ThrowingCopy>>);
+}
+
+TEST_CASE("constructor triviality propagates from T even when a discriminant is present", "[movable_box]") {
+    using CopyBox = box_under_test::movable_box<TrivialCopyThrowingMove>;
+    STATIC_REQUIRE(sizeof(CopyBox) > sizeof(TrivialCopyThrowingMove));
+    STATIC_REQUIRE(std::is_trivially_copy_constructible_v<TrivialCopyThrowingMove>);
+    STATIC_REQUIRE(std::is_trivially_copy_constructible_v<CopyBox>);
+    STATIC_REQUIRE_FALSE(std::is_trivially_move_constructible_v<CopyBox>);
+
+    using MoveBox = box_under_test::movable_box<TrivialMoveThrowingCopy>;
+    STATIC_REQUIRE(sizeof(MoveBox) > sizeof(TrivialMoveThrowingCopy));
+    STATIC_REQUIRE(std::is_trivially_move_constructible_v<TrivialMoveThrowingCopy>);
+    STATIC_REQUIRE(std::is_trivially_move_constructible_v<MoveBox>);
+    STATIC_REQUIRE_FALSE(std::is_trivially_copy_constructible_v<MoveBox>);
+
+    // The defaulted constructors carry the engaged value across.
+    CopyBox engaged{std::in_place, 7};
+    CopyBox copied{engaged};
+    REQUIRE(copied.has_value());
+    CHECK((*copied).value == 7);
+
+    MoveBox moved_from{std::in_place, 8};
+    MoveBox moved{std::move(moved_from)};
+    REQUIRE(moved.has_value());
+    CHECK((*moved).value == 8);
 }
 
 TEST_CASE("a payload that forces a discriminant has a strictly larger box (recommended practice)", "[movable_box]") {

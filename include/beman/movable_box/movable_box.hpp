@@ -92,8 +92,15 @@ class boxed_storage {
         engaged_ = true;
     }
 
+    // Trivial copy and move are noexcept, so a T reaches this storage with a trivial copy or move
+    // constructor only when the other one can throw. The defaulted forms copy the union and flag
+    // as they stand, which is correct whether or not a value is engaged.
+    constexpr boxed_storage(const boxed_storage&)
+        requires std::copy_constructible<T> && std::is_trivially_copy_constructible_v<T>
+    = default;
+
     constexpr boxed_storage(const boxed_storage& other)
-        requires std::copy_constructible<T>
+        requires std::copy_constructible<T> && (!std::is_trivially_copy_constructible_v<T>)
         : dummy_(), engaged_(other.engaged_) {
         if (engaged_) {
             std::construct_at(std::addressof(value_), *other.get());
@@ -104,7 +111,12 @@ class boxed_storage {
         requires(!std::copy_constructible<T>)
     = delete;
 
+    constexpr boxed_storage(boxed_storage&&)
+        requires std::is_trivially_move_constructible_v<T>
+    = default;
+
     constexpr boxed_storage(boxed_storage&& other) noexcept(std::is_nothrow_move_constructible_v<T>)
+        requires(!std::is_trivially_move_constructible_v<T>)
         : dummy_(), engaged_(other.engaged_) {
         if (engaged_) {
             std::construct_at(std::addressof(value_), std::move(*other.get()));
