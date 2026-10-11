@@ -51,41 +51,8 @@ class flat_storage {
         requires std::is_constructible_v<T, Args...>
     constexpr explicit flat_storage(std::in_place_t, Args&&... args) : value_(std::forward<Args>(args)...) {}
 
-    constexpr flat_storage(const flat_storage&)
-        requires std::copy_constructible<T> && std::is_trivially_copy_constructible_v<T>
-    = default;
-
-    constexpr flat_storage(const flat_storage& other)
-        requires std::copy_constructible<T> && (!std::is_trivially_copy_constructible_v<T>)
-        : value_(*other.get()) {}
-
-    constexpr flat_storage(const flat_storage&)
-        requires(!std::copy_constructible<T>)
-    = delete;
-
-    constexpr flat_storage(flat_storage&&) noexcept(std::is_nothrow_move_constructible_v<T>)
-        requires std::is_trivially_move_constructible_v<T>
-    = default;
-
-    constexpr flat_storage(flat_storage&& other) noexcept(std::is_nothrow_move_constructible_v<T>)
-        requires(!std::is_trivially_move_constructible_v<T>)
-        : value_(std::move(*other.get())) {}
-
-    // Declared only so movable_box's conditionally defaulted assignment operators (see
-    // use_trivial_copy_assign_v below) have a non-deprecated member assignment to default to;
-    // deleted when T is not assignable, in which case movable_box provides its own.
-    constexpr flat_storage& operator=(const flat_storage&) = default;
-    constexpr flat_storage& operator=(flat_storage&&)      = default;
-
-    constexpr ~flat_storage()
-        requires std::is_trivially_destructible_v<T>
-    = default;
-
-    constexpr ~flat_storage()
-        requires(!std::is_trivially_destructible_v<T>)
-    {
-        std::destroy_at(std::addressof(value_));
-    }
+    // T is a plain member, not a union member, so the implicitly declared copy/move constructors,
+    // assignment operators, and destructor are each exactly as trivial, noexcept, or deleted as T's.
 
     static constexpr bool has_value() noexcept { return true; }
 
