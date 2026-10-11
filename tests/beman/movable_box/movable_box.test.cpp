@@ -239,6 +239,22 @@ struct BoxedMovable {
     }
 };
 
+// Copy-constructible but not copyable, with a potentially-throwing copy
+// constructor: forces a discriminant, like ThrowingCopy, but instrumented so
+// destructor calls can be counted.
+struct BoxedCounted {
+    inline static Counters counters{};
+
+    int value;
+
+    explicit BoxedCounted(int v) : value(v) { ++counters.value_ctor; }
+    BoxedCounted(const BoxedCounted& o) noexcept(false) : value(o.value) { ++counters.copy_ctor; }
+    BoxedCounted(BoxedCounted&& o) noexcept : value(o.value) { ++counters.move_ctor; }
+    BoxedCounted& operator=(const BoxedCounted&) = delete;
+    BoxedCounted& operator=(BoxedCounted&&)      = delete;
+    ~BoxedCounted() { ++counters.dtor; }
+};
+
 // Detects whether box_under_test::movable_box<T> is a valid type: used
 // to check the constraints in D7 without triggering a hard compile error
 // for the negative cases.
@@ -416,6 +432,49 @@ TEST_CASE("copy construction copies, move construction moves the contained value
     CHECK(c->a == 7);
     // [movable.box.ctor]p8: rhs.has_value() is unchanged by move construction.
     CHECK(a.has_value());
+}
+
+// ---------------------------------------------------------------------
+// Destruction ([movable.box.dtor])
+// ---------------------------------------------------------------------
+
+// Every object constructed is destroyed exactly once, whether the box stores
+// only a T or carries a discriminant, and including the object a synthesized
+// destroy-then-construct assignment puts in place.
+template <class T>
+void check_each_value_destroyed_once() {
+    T::counters.reset();
+    {
+        box_under_test::movable_box<T> a{std::in_place, 1};
+        box_under_test::movable_box<T> b{std::in_place, 2};
+        box_under_test::movable_box<T> c{std::move(a)};
+        b = c;
+        c = std::move(b);
+    }
+    const auto& n = T::counters;
+    CHECK(n.dtor == n.default_ctor + n.value_ctor + n.copy_ctor + n.move_ctor);
+}
+
+TEST_CASE("the destructor destroys the contained value exactly once", "[movable_box]") {
+    // Cover both storage shapes the recommended practice selects between.
+    STATIC_REQUIRE(sizeof(box_under_test::movable_box<Regular>) == sizeof(Regular));
+    STATIC_REQUIRE(sizeof(box_under_test::movable_box<NonAssignable>) == sizeof(NonAssignable));
+    STATIC_REQUIRE(sizeof(box_under_test::movable_box<BoxedCounted>) > sizeof(BoxedCounted));
+
+    SECTION("flat storage, assignable T") { check_each_value_destroyed_once<Regular>(); }
+    SECTION("flat storage, destroy-then-construct assignment") { check_each_value_destroyed_once<NonAssignable>(); }
+    SECTION("boxed storage") { check_each_value_destroyed_once<BoxedCounted>(); }
+
+    SECTION("flat storage, move-only T") {
+        MoveOnly::counters.reset();
+        {
+            box_under_test::movable_box<MoveOnly> a{std::in_place, 1};
+            box_under_test::movable_box<MoveOnly> b{std::move(a)};
+            a = std::move(b);
+        }
+        const auto& n = MoveOnly::counters;
+        CHECK(n.dtor == n.value_ctor + n.move_ctor);
+    }
 }
 
 TEST_CASE("dereference returns references to the same object", "[movable_box]") {
