@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- docs/site-index.html -->
+<!-- SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception -->
+<!-- The root page of the published documentation; see scripts/build-docs-site.sh. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>beman.movable_box documentation</title>
+<link rel="icon" href="doxygen/beman-logo.png">
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --link: #0969da;
+  --card: #f6f8fa;
+  --border: #d1d9e0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --link: #4493f8;
+    --card: #151b23;
+    --border: #3d444d;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.95em;
+}
+p.lede {
+  color: var(--muted);
+}
+a {
+  color: var(--link);
+}
+ul.refs {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+ul.refs a {
+  display: block;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  text-decoration: none;
+}
+ul.refs a strong {
+  display: block;
+  font-size: 1.1rem;
+}
+ul.refs a span {
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+<img src="doxygen/beman-logo.png" alt="" width="48" height="48">
+<h1>beman.movable_box</h1>
+</header>
+<p class="lede">
+<code>movable_box&lt;T&gt;</code> is the standard library's exposition-only <em>movable-box</em>, made available to users:
+a <code>move_constructible</code> object made assignable, so a range type can hold a predicate, projection, or value and still model <code>movable</code>.
+</p>
+<p>
+The same annotated header produces both references below and the proposed standard wording.
+</p>
+<ul class="refs">
+<li><a href="doxygen/index.html"><strong>Doxygen reference</strong><span>Overview, class reference, and the example.</span></a></li>
+<li><a href="mrdocs/index.html"><strong>MrDocs reference</strong><span>The same API, one page per declaration.</span></a></li>
+</ul>
+<p>
+Source, the proposal paper, and build instructions are at
+<a href="https://github.com/bemanproject/movable_box">github.com/bemanproject/movable_box</a>.
+</p>
+</main>
+</body>
+</html>
