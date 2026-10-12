@@ -58,6 +58,16 @@ int main() {
 
 Full runnable examples can be found in [`examples/`](examples/).
 
+## Documentation
+
+The API reference is published at <https://bemanproject.github.io/movable_box/>, built two ways from the same header:
+
+* [Doxygen](https://bemanproject.github.io/movable_box/doxygen/), with an overview of the design;
+* [MrDocs](https://bemanproject.github.io/movable_box/mrdocs/), one page per declaration.
+
+Both include the proposed standard wording for each member.
+[docs/README.md](docs/README.md) describes how they are built and published, and how to build them locally.
+
 ## Dependencies
 
 ### Build Environment
@@ -94,6 +104,8 @@ Change the wording by editing the header's `//!` docblocks, then run `make paper
 `make wording` does only the regeneration.
 Both need `specgen` on `PATH` (or `SPECGEN=` naming it); without it they warn and use the checked-in fragments, so the paper still builds.
 `make wording-check` fails if the checked-in fragments have drifted from the header.
+
+The same header's `///` comments are API documentation for Doxygen and MrDocs, which specgen ignores; `make docs-site` builds the published references locally (see [docs/README.md](docs/README.md)).
 
 ## Integrate beman.movable_box into your project
 

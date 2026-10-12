@@ -22,7 +22,8 @@ import beman.movable_box;
 // This header is also the source of the proposed wording for [movable.box]: scripts/gen-wording.sh
 // runs beman.specgen over it. The class body is the synopsis, the `//!` docblocks are the wording,
 // and the `\rSec3` markers below place each item in its subclause. Edit the wording here, never in
-// the generated fragments under papers/wording/.
+// the generated fragments under papers/wording/. The `///` comments are API documentation for
+// Doxygen and MrDocs only; specgen never promotes them into wording.
 //
 // Each special member is a pair of declarations: one defaulted, and so trivial, where T's
 // corresponding member is trivial, and one user-provided everywhere else. The defaulted twin is
@@ -30,10 +31,17 @@ import beman.movable_box;
 
 namespace beman::movable_box {
 
+/// \brief A `move_constructible` object, made assignable.
+///
+/// When `T` is not itself copyable or movable, copy and move assignment are synthesized by destroying
+/// the contained value and constructing a new one in its place, so `movable_box<T>` models `movable`
+/// for every `T` it accepts. This is the standard library's exposition-only *movable-box*, made
+/// available to users.
 template <class T>
     requires std::move_constructible<T> && std::is_object_v<T>
 class movable_box {
   public:
+    /// The type of the contained value.
     using value_type = T;
 
     // \ref{movable.box.ctor}, constructors

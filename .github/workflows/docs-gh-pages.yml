@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+# Builds the Doxygen and MrDocs references with scripts/build-docs-site.sh,
+# the same script `make docs-site` runs, and publishes the assembled site to
+# the gh-pages branch: a landing page at the root, doxygen/ and mrdocs/ beside
+# it. A repository has one gh-pages branch, so both references deploy
+# together, replacing the whole tree each time.
+
+name: Documentation GitHub Pages Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each run replaces the whole gh-pages tree, so runs must not overlap.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+env:
+  DOXYGEN_VERSION: 1.15.0
+  DOXYGEN_SHA256: 0ec2e5b2c3cd82b7106d19cb42d8466450730b8cb7a9e85af712be38bf4523a1
+  MRDOCS_RELEASE: 2026.9.29
+  MRDOCS_SHA256: 9d96e42f303046fb0b221aa9071eabccc40b9683e0b7af2b02a929d15476ca6a
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Install Doxygen
+        run: |
+          archive="$RUNNER_TEMP/doxygen.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+          echo "${DOXYGEN_SHA256}  $archive" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/doxygen"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/doxygen" --strip-components=1
+          echo "$RUNNER_TEMP/doxygen/bin" >> "$GITHUB_PATH"
+
+      - name: Install MrDocs
+        run: |
+          archive="$RUNNER_TEMP/mrdocs.tar.xz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/cppalliance/mrdocs/releases/download/${MRDOCS_RELEASE}/MrDocs-${MRDOCS_RELEASE}-Linux.tar.xz"
+          echo "${MRDOCS_SHA256}  $archive" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/mrdocs"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/mrdocs" --strip-components=1
+          echo "$RUNNER_TEMP/mrdocs/bin" >> "$GITHUB_PATH"
+
+      - name: Install Asciidoctor
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes asciidoctor
+
+      - name: Build the documentation site
+        run: |
+          doxygen --version
+          mrdocs --version
+          scripts/build-docs-site.sh .build/site
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
+        with:
+          branch: gh-pages
+          folder: .build/site

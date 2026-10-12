@@ -4,9 +4,14 @@
 # yaml-language-server: $schema=https://mrdocs.com/docs/mrdocs/develop/_attachments/mrdocs.schema.json
 
 ---
-# `make mrdocs` runs MrDocs over a copy of include/ filtered through
-# specgen-doxygen.sed and specgen-mrdocs.sed, which turn the headers' specgen
-# wording markup into documentation MrDocs reads. The copy is in .build/.
+# scripts/build-mrdocs.sh (`make mrdocs`) runs MrDocs over a copy of include/
+# filtered through specgen-doxygen.sed and specgen-mrdocs.sed, which turn the
+# headers' specgen wording markup into documentation MrDocs reads. The copy is
+# in .build/.
+#
+# Needs MrDocs 2026.9.29 or later. Earlier releases render the filtered lists
+# inline, and take each function's first wording paragraph as its brief
+# unless `auto-brief: false` is set.
 source-root: ../.build/mrdocs
 input:
   - ../.build/mrdocs/include
@@ -22,9 +27,6 @@ include-symbols:
   - 'beman::movable_box::**'
 implementation-defined:
   - 'beman::movable_box::detail'
-# The wording has no brief, and MrDocs would otherwise take the first
-# paragraph out of the first section to make one.
-auto-brief: false
 multipage: true
 generator: adoc
 output: adoc
