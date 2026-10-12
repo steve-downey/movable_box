@@ -261,7 +261,7 @@ struct TrivialMoveThrowingCopy {
     int value;
     explicit TrivialMoveThrowingCopy(int v) : value(v) {}
     TrivialMoveThrowingCopy(const TrivialMoveThrowingCopy& o) noexcept(false) : value(o.value) {}
-    TrivialMoveThrowingCopy(TrivialMoveThrowingCopy&&) = default;
+    TrivialMoveThrowingCopy(TrivialMoveThrowingCopy&&)                 = default;
     TrivialMoveThrowingCopy& operator=(const TrivialMoveThrowingCopy&) = delete;
     TrivialMoveThrowingCopy& operator=(TrivialMoveThrowingCopy&&)      = delete;
 };

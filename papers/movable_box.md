@@ -431,7 +431,7 @@ against the wording below rather than against the implementation. That
 repository is not public yet; the cited URL is where it will be
 published. The same suite compiles and runs, unmodified, against
 libstdc++'s exposition-only `std::ranges::__detail::__box`.
-Thirty-four of its thirty-eight test cases pass there.
+Thirty-six of its forty test cases pass there.
 
 The four failures are not defects. [range.move.wrap] specifies the
 exposition-only type well, and an exposition-only type owes correct
