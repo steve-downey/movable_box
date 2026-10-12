@@ -89,6 +89,11 @@ You can disable building tests by setting CMake option `BEMAN_MOVABLE_BOX_BUILD_
 
 See the [Contributing Guidelines](CONTRIBUTING.md).
 
+The proposed wording for `[movable.box]` in [papers/movable_box.md](papers/movable_box.md) is generated from [include/beman/movable_box/movable_box.hpp](include/beman/movable_box/movable_box.hpp) by [beman.specgen](https://github.com/steve-downey/specgen).
+Change the wording by editing the header's `//!` docblocks, then run `make wording`, which needs `specgen` on `PATH` (or `SPECGEN=` naming it).
+`make wording-check` fails if the checked-in fragments under `papers/wording/` have drifted from the header.
+The fragments are checked in, so the paper builds without specgen.
+
 ## Integrate beman.movable_box into your project
 
 ### Build

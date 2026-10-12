@@ -151,6 +151,21 @@ clean: $(_build_path)/CMakeCache.txt ## Clean the build artifacts
 realclean: ## Delete the build directory
 	rm -rf $(_build_path)
 
+# The proposed wording for [movable.box] is generated from the marked-up
+# header by beman.specgen; see scripts/gen-wording.sh. The fragments are
+# checked in, so the paper builds without specgen.
+WORDING_DIR ?= papers/wording
+
+.PHONY: wording
+wording: ## Regenerate the [movable.box] wording fragments from the header
+	scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR)
+
+.PHONY: wording-check
+wording-check: ## Check the checked-in wording matches what the header generates
+	rm -rf $(BUILD_DIR)/wording-check
+	scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
+	diff -r -x .stamp $(WORDING_DIR) $(BUILD_DIR)/wording-check
+
 .PHONY: env
 env:
 	$(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))

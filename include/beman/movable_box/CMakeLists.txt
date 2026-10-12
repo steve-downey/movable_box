@@ -8,6 +8,7 @@ if(BEMAN_MOVABLE_BOX_USE_MODULES)
             FILE_SET HEADERS
                 FILES
                     config.hpp
+                    detail/storage.hpp
                     movable_box.hpp
                     "${PROJECT_BINARY_DIR}/include/beman/movable_box/config_generated.hpp"
     )
@@ -18,6 +19,7 @@ else()
             FILE_SET HEADERS
                 FILES
                     config.hpp
+                    detail/storage.hpp
                     movable_box.hpp
                     "${PROJECT_BINARY_DIR}/include/beman/movable_box/config_generated.hpp"
     )

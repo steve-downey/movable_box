@@ -1,0 +1,5 @@
+./movable.box.general.md
+./movable.box.ctor.md
+./movable.box.dtor.md
+./movable.box.assign.md
+./movable.box.obs.md
