@@ -20,9 +20,16 @@
 #
 # `--split` never deletes files left by an earlier run, so the ordered
 # manifest is written beside the fragments and is the record the paper's
-# include order is reconciled against.
+# include order is reconciled against. It is also what the paper build
+# depends on: it is rewritten on every run, and it is not a `.md` file, which
+# the vendored MPark.WG21 Makefile would pass to pandoc as an input.
 #
-# Usage: scripts/gen-wording.sh [output-directory]
+# Any arguments after the output directory are passed to `specgen generate`;
+# the top-level Makefile passes `--depfile` and `--dep-target` through them.
+# Paths in them must be absolute, because specgen runs from the output
+# directory.
+#
+# Usage: scripts/gen-wording.sh [output-directory [specgen-option...]]
 
 set -o nounset
 set -o errexit
@@ -33,6 +40,7 @@ readonly REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 SPECGEN="${SPECGEN:-specgen}"
 OUT_DIR="${1:-$REPO_ROOT/papers/wording}"
+shift $(( $# > 0 ? 1 : 0 ))
 
 readonly HEADER="$REPO_ROOT/include/beman/movable_box/movable_box.hpp"
 readonly MANIFEST="movable_box.manifest"
@@ -72,6 +80,7 @@ status=0
         --base-heading-level 4 \
         --split . \
         --root movable.box.general \
+        "$@" \
         -- "${CLANG_ARGS[@]}" \
         > "$MANIFEST" 2> "$FINDINGS"
 ) || status=$?
@@ -81,10 +90,5 @@ if [[ $status -ne 0 || -s "$FINDINGS" ]]; then
     echo "gen-wording: error: specgen reported findings; fix the header markup" >&2
     exit 1
 fi
-
-# A stamp the paper build can depend on. The fragments themselves must not
-# become prerequisites of the paper: the vendored MPark.WG21 Makefile passes
-# every `%.md` prerequisite to pandoc as an input file.
-date -u +%Y-%m-%dT%H:%M:%SZ > "$OUT_DIR/.stamp"
 
 echo "gen-wording: wrote $OUT_DIR"
