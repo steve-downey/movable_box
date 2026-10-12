@@ -106,6 +106,51 @@ ctest --test-dir build
 The file `./lockfile.json` configures the list of dependencies and versions that will be
 acquired by FetchContent.
 
+## Vendor movable-box conformance targets
+
+Besides the reference-implementation suite, the test directory builds the
+same suite against each shipping implementation's exposition-only
+movable-box, as evidence for the paper's drop-in claim (see
+`tests/beman/movable_box/box_under_test.hpp` for the box selection, the
+vendor shims, and the catalog of expected divergences):
+
+- `beman.movable_box.tests.libstdcxx_box` — libstdc++'s
+  `std::ranges::__detail::__box`, when building against libstdc++ 14 or
+  newer (GCC or Clang).
+- `beman.movable_box.tests.libcxx_box` — libc++'s
+  `std::ranges::__movable_box`, when building against libc++ 17 or newer.
+- `beman.movable_box.tests.msvc_stl_box` — the Microsoft STL's
+  `std::ranges::_Movable_box`, when building against the MS STL.
+
+Each target is enabled automatically when a probe detects the matching
+standard library (with `__cpp_lib_ranges >= 202207L`, i.e. P2494R2
+movable-box semantics); no extra configuration is needed.
+
+### The MS STL target on Linux
+
+The MS STL has no native Linux support, but the `msvc_stl_box` target can
+be developed on Linux by cross-compiling with `clang-cl` against the MSVC
+CRT and Windows SDK, which [xwin](https://github.com/Jake-Shadle/xwin)
+downloads without a Windows machine:
+
+```bash
+xwin --accept-license --arch x86_64 splat --output ~/xwin
+
+cmake -B build/msvc-stl -S . -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/msvc-stl-linux-toolchain.cmake \
+  -DXWIN_DIR=$HOME/xwin \
+  -DCMAKE_CXX_STANDARD=23 \
+  -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=./infra/cmake/use-fetch-content.cmake
+cmake --build build/msvc-stl
+```
+
+Building alone already evaluates every `STATIC_REQUIRE`, `constexpr`
+static_assert, and shim-parity check, which is most of the conformance
+value. To also run the binaries under `ctest`, install Wine and configure
+with `-DCMAKE_CROSSCOMPILING_EMULATOR=wine64` as well. This route is a
+local convenience only; the Windows CI jobs are the authority for the MS
+STL target.
+
 ## Project-specific configure arguments
 
 Project-specific options are prefixed with `BEMAN_MOVABLE_BOX`.

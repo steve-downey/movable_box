@@ -1,6 +1,7 @@
 papers/generated/
 /uv.lock
 /.build/
+/build/
 /.update-submodules
 /compile_commands.json
 

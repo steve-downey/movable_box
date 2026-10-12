@@ -431,7 +431,7 @@ against the wording below rather than against the implementation. That
 repository is not public yet; the cited URL is where it will be
 published. The same suite compiles and runs, unmodified, against
 libstdc++'s exposition-only `std::ranges::__detail::__box`.
-Thirty-three of its thirty-seven test cases pass there.
+Thirty-six of its forty test cases pass there.
 
 The four failures are not defects. [range.move.wrap] specifies the
 exposition-only type well, and an exposition-only type owes correct
@@ -519,19 +519,85 @@ wording is standalone (D5) and mandates no structure. A specification
 that made `movable_box` an `optional` with patches would put every
 view's layout back in play.
 
-This has been confirmed for one implementation of three. libc++'s
-`std::ranges::__movable_box` and the Microsoft STL's `_Movable_box` have
-not been tested, and I intend to run the suite against both before
-asking LEWG to advance the paper.
+The same suite has since been run against the other two
+implementations: libc++'s `std::ranges::__movable_box` (LLVM 17 through
+22) and the Microsoft STL's `std::ranges::_Movable_box` (the latest
+MSVC), built and executed as conformance targets in the reference
+implementation's CI [@beman-movable-box]. Neither box can host the
+suite raw. libstdc++'s could, but by an accident of structure: it
+publicly inherits from `optional`, which happens to supply every
+proposed spelling. libc++ and Microsoft wrote theirs freestanding, and
+each is *narrower* than the proposed interface in spelling:
 
-That is a condition on the proposal rather than an outstanding chore.
-Per the drop-in principle, a required ABI break in any of the three sinks
-it. The libstdc++ result is therefore evidence only that adoption *can*
-be free; two thirds of the claim is unverified, and the
-paper should not be advanced on one data point. LEWG should read the
-result above as a demonstration of method — patch the vendor's header,
-compile every view specified in terms of *movable-box*, compare layouts
-— and not yet as a conclusion.
+- `value_type` is absent from both.
+- Both construct only from `in_place`: neither has the constructors
+  from `const T&` and `T&&`.
+- Neither spells `has_value()`; libc++ has `__has_value()`, the
+  Microsoft STL only `explicit operator bool`.
+- The Microsoft STL has no `operator->` (its `single_view::data` is
+  written as `addressof(*value_)` instead).
+- Neither has the rvalue `operator*` overloads, and the lvalue
+  overloads are not ref-qualified.
+
+Every entry on that list is additive: a member function or a nested
+typedef, no state, no layout. The conformance targets make that claim
+executable. The suite runs against a shim deriving from the vendor's
+box and adding exactly the missing members, and static assertions
+check, for every payload type in the suite, that the shim changes
+neither size nor alignment nor the availability, triviality, or
+exception specification of any special member. The shim is the
+candidate adoption patch; the parity checks are the demonstration that
+it is free.
+
+The semantic divergences that remain fall into two families:
+
+- **Self-assignment.** The proposed wording specifies no effects when
+  `this == addressof(rhs)`. For a copyable payload, none of the three
+  implementations provides that today: whenever `T` models `copyable`
+  (respectively `movable`), all three defer to `T`'s own assignment
+  operator — defaulted in libstdc++'s and libc++'s no-discriminant
+  specializations, unconditional in the Microsoft STL's branches — so
+  `T`'s assignment observes the self-assignment. The cross-checks also
+  surfaced a case the libstdc++ run could not: in the *discriminated*
+  box of a movable payload, libc++ (which defaults move assignment
+  whenever `T` models `movable`, deferring to `optional`'s, which has
+  no self-check) and the Microsoft STL (which assigns unconditionally)
+  both let `T`'s move assignment observe a self-move — a move
+  assignment that wipes its source then loses the value — while
+  libstdc++'s primary defines its own guarded assignment operators and
+  conforms. All three do guard the synthesized destroy-then-construct
+  branches, where the self-check keeps self-assignment from destroying
+  the operand outright.
+- **Exception-specification strengthening.** All three give the move
+  assignment a stronger `noexcept` than the proposed formula for a
+  payload whose move constructor throws but whose move assignment does
+  not (the Microsoft STL documents its formulas as "strengthened"
+  in-source). As for libstdc++ above, this is conforming under
+  [res.on.exception.handling] p5 and needs no work.
+
+Two smaller items are vendor-specific. Neither of libstdc++'s interface
+accidents recurs elsewhere — libc++ and the Microsoft STL both
+constrain their default constructors correctly. The Microsoft STL's
+`in_place` constructor template, however, is unconstrained and
+non-`explicit`, so `is_constructible_v` answers `true` for argument
+lists `T` cannot be constructed from; unobservable through the views,
+and additive to close.
+
+The drop-in claim now stands as follows, for all three implementations:
+the missing interface is demonstrated additive with layouts unchanged,
+and the residue is one wording decision plus a conforming
+strengthening. The self-assignment postcondition of the proposed
+[movable.box.assign] is provided by none of the three for copyable
+payloads, and by only libstdc++ for the movable discriminated case, so
+LEWG should decide it explicitly (Open Questions, item 5): keep the
+guarantee, with vendors adding one cheap, ABI-free self-check per
+assignment operator, or weaken the wording to defer to `T`'s assignment
+when `copyable<T>` / `movable<T>` is modeled, matching everything that
+ships. The libstdc++ header-patch experiment above remains the deepest
+of the three results — it also rebuilt every view against the patched
+box — and repeating it for libc++ and the Microsoft STL is available as
+further confirmation; but the interface-level question it answered is
+now answered for all three.
 
 # Proposed Wording
 
@@ -688,6 +754,13 @@ Add:
    (D6)?
 4. Does LEWG endorse the standalone specification (D5) and the
    usage-surface-only interface (D6, D9) as the scope of the paper?
+5. Self-assignment: the proposed [movable.box.assign] specifies no
+   effects when `this == addressof(rhs)`. No shipping implementation
+   provides that where the box defers to `T`'s own assignment operator
+   (see [Implementation Experience](#implementation-experience)). Keep
+   the guarantee — vendors add a self-check per assignment operator —
+   or defer to `T`'s assignment semantics when `copyable<T>` /
+   `movable<T>` is modeled, matching what ships?
 
 # Acknowledgements
 
