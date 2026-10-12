@@ -560,9 +560,9 @@ Add a new subclause to [utility] (placement editorial):
 
 ::: add
 
-**Movable wrapper [movable.box]**
+### Movable wrapper [movable.box] {-}
 
-**General [movable.box.general]**
+#### General [movable.box.general] {-}
 
 [1]{.pnum} A `movable_box<T>` either *contains a value* of type `T` or
 contains no value. When a `movable_box<T>` contains a value, the
@@ -587,216 +587,20 @@ or `is_nothrow_move_constructible_v<T> &&`
 `is_nothrow_copy_constructible_v<T>` is `true`. Otherwise, `movable_box<T>` should store only a `T` if either
 `T` models `movable` or `is_nothrow_move_constructible_v<T>` is `true`.
 
-```cpp
-namespace std {
-  template<class T>
-    requires move_constructible<T> && is_object_v<T>
-  class movable_box {
-  public:
-    using value_type = T;
+::: {.include file="wording/movable.box.general.md"}
+:::
 
-    // [movable.box.ctor], constructors
-    constexpr movable_box() noexcept(is_nothrow_default_constructible_v<T>)
-      requires default_initializable<T>;
-    constexpr explicit movable_box(const T& t) requires copy_constructible<T>;
-    constexpr explicit movable_box(T&& t);
-    template<class... Args>
-      constexpr explicit movable_box(in_place_t, Args&&... args);
+::: {.include file="wording/movable.box.ctor.md"}
+:::
 
-    constexpr movable_box(const movable_box& rhs) requires copy_constructible<T>;
-    constexpr movable_box(movable_box&& rhs)
-      noexcept(is_nothrow_move_constructible_v<T>);
+::: {.include file="wording/movable.box.dtor.md"}
+:::
 
-    // [movable.box.dtor], destructor
-    constexpr ~movable_box();
+::: {.include file="wording/movable.box.assign.md"}
+:::
 
-    // [movable.box.assign], assignment
-    constexpr movable_box& operator=(const movable_box& rhs)
-      noexcept(@_see below_@) requires copy_constructible<T>;
-    constexpr movable_box& operator=(movable_box&& rhs)
-      noexcept(@_see below_@);
-
-    // [movable.box.obs], observers
-    constexpr bool has_value() const noexcept;
-    constexpr explicit operator bool() const noexcept;
-
-    constexpr T& operator*() & noexcept;
-    constexpr const T& operator*() const & noexcept;
-    constexpr T&& operator*() && noexcept;
-    constexpr const T&& operator*() const && noexcept;
-
-    constexpr T* operator->() noexcept;
-    constexpr const T* operator->() const noexcept;
-  };
-}
-```
-
-**Constructors [movable.box.ctor]**
-
-```cpp
-constexpr movable_box() noexcept(is_nothrow_default_constructible_v<T>)
-  requires default_initializable<T>;
-```
-
-[1]{.pnum} *Effects*: Equivalent to `movable_box(in_place)`.
-[*Note*: The contained value is value-initialized. — *end note*]
-
-```cpp
-constexpr explicit movable_box(const T& t) requires copy_constructible<T>;
-```
-
-[2]{.pnum} *Effects*: Direct-non-list-initializes the contained value
-with `t`.
-
-```cpp
-constexpr explicit movable_box(T&& t);
-```
-
-[3]{.pnum} *Effects*: Direct-non-list-initializes the contained value
-with `std::move(t)`.
-
-```cpp
-template<class... Args>
-  constexpr explicit movable_box(in_place_t, Args&&... args);
-```
-
-[4]{.pnum} *Constraints*: `is_constructible_v<T, Args...>` is `true`.
-
-[5]{.pnum} *Effects*: Direct-non-list-initializes the contained value
-with `std::forward<Args>(args)...`.
-
-```cpp
-constexpr movable_box(const movable_box& rhs) requires copy_constructible<T>;
-```
-
-[6]{.pnum} *Effects*: If `rhs` contains a value, direct-non-list-initializes
-the contained value with `*rhs`; otherwise, `*this` contains no value.
-
-[7]{.pnum} *Remarks*: This constructor is trivial if
-`is_trivially_copy_constructible_v<T>` is `true`.
-
-```cpp
-constexpr movable_box(movable_box&& rhs)
-  noexcept(is_nothrow_move_constructible_v<T>);
-```
-
-[8]{.pnum} *Effects*: If `rhs` contains a value, direct-non-list-initializes
-the contained value with `std::move(*rhs)`; otherwise, `*this` contains
-no value. `rhs.has_value()` is unchanged.
-
-[9]{.pnum} *Remarks*: This constructor is trivial if
-`is_trivially_move_constructible_v<T>` is `true`.
-
-**Destructor [movable.box.dtor]**
-
-```cpp
-constexpr ~movable_box();
-```
-
-[1]{.pnum} *Effects*: Destroys the contained value, if any.
-
-[2]{.pnum} *Remarks*: This destructor is trivial if
-`is_trivially_destructible_v<T>` is `true`.
-
-**Assignment [movable.box.assign]**
-
-```cpp
-constexpr movable_box& operator=(const movable_box& rhs)
-  noexcept(@_see below_@) requires copy_constructible<T>;
-```
-
-[1]{.pnum} *Effects*: If `this == addressof(rhs)` is `true`, no effects.
-Otherwise:
-
-- [1.1]{.pnum} If `copyable<T>` is modeled: if `*this` and `rhs` each
-  contain a value, the contained value of `*this` is copy-assigned from
-  `*rhs`; otherwise, if `rhs` contains a value, a contained value is
-  direct-non-list-initialized with `*rhs`; otherwise, the contained
-  value of `*this`, if any, is destroyed.
-
-- [1.2]{.pnum} Otherwise: the contained value of `*this`, if any, is
-  destroyed; then, if `rhs` contains a value, a contained value is
-  direct-non-list-initialized with `*rhs`. If the initialization exits
-  via an exception, `*this` contains no value.
-
-[2]{.pnum} *Returns*: `*this`.
-
-[3]{.pnum} *Remarks*: The exception specification is equivalent to:
-`is_nothrow_copy_constructible_v<T> &&`
-`(!copyable<T> || is_nothrow_copy_assignable_v<T>)`.
-
-[4]{.pnum} *Remarks*: This operator is trivial if
-`is_trivially_copy_constructible_v<T>`,
-`is_trivially_copy_assignable_v<T>`, and
-`is_trivially_destructible_v<T>` are all `true`.
-
-```cpp
-constexpr movable_box& operator=(movable_box&& rhs)
-  noexcept(@_see below_@);
-```
-
-[5]{.pnum} *Effects*: If `this == addressof(rhs)` is `true`, no effects.
-Otherwise:
-
-- [5.1]{.pnum} If `movable<T>` is modeled: if `*this` and `rhs` each
-  contain a value, the contained value of `*this` is move-assigned from
-  `*rhs`; otherwise, if `rhs` contains a value, a contained value is
-  direct-non-list-initialized with `std::move(*rhs)`; otherwise, the
-  contained value of `*this`, if any, is destroyed. `rhs.has_value()`
-  is unchanged.
-
-- [5.2]{.pnum} Otherwise: the contained value of `*this`, if any, is
-  destroyed; then, if `rhs` contains a value, a contained value is
-  direct-non-list-initialized with `std::move(*rhs)`. If the
-  initialization exits via an exception, `*this` contains no value.
-  `rhs.has_value()` is unchanged.
-
-[6]{.pnum} *Returns*: `*this`.
-
-[7]{.pnum} *Remarks*: The exception specification is equivalent to:
-`is_nothrow_move_constructible_v<T> &&`
-`(!movable<T> || is_nothrow_move_assignable_v<T>)`.
-
-[8]{.pnum} *Remarks*: This operator is trivial if
-`is_trivially_move_constructible_v<T>`,
-`is_trivially_move_assignable_v<T>`, and
-`is_trivially_destructible_v<T>` are all `true`.
-
-**Observers [movable.box.obs]**
-
-```cpp
-constexpr bool has_value() const noexcept;
-constexpr explicit operator bool() const noexcept;
-```
-
-[1]{.pnum} *Returns*: `true` if and only if `*this` contains a value.
-
-```cpp
-constexpr T& operator*() & noexcept;
-constexpr const T& operator*() const & noexcept;
-```
-
-[2]{.pnum} *Preconditions*: `*this` contains a value.
-
-[3]{.pnum} *Returns*: A reference to the contained value.
-
-```cpp
-constexpr T&& operator*() && noexcept;
-constexpr const T&& operator*() const && noexcept;
-```
-
-[4]{.pnum} *Preconditions*: `*this` contains a value.
-
-[5]{.pnum} *Returns*: `std::move(`the contained value`)`.
-
-```cpp
-constexpr T* operator->() noexcept;
-constexpr const T* operator->() const noexcept;
-```
-
-[6]{.pnum} *Preconditions*: `*this` contains a value.
-
-[7]{.pnum} *Returns*: `addressof(`the contained value`)`.
+::: {.include file="wording/movable.box.obs.md"}
+:::
 
 :::
 

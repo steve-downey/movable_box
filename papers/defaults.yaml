@@ -1,0 +1,23 @@
+# papers/defaults.yaml                                              -*-yaml-*-
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+# Per-paper pandoc defaults, layered after MPark.WG21's own `doc` and
+# `formatting` defaults by base.mk's `-d $(DEFAULTS)`. It exists so the wording
+# fragments that `make wording` generates can be spliced into the paper without
+# patching the vendored subtree under wg21/.
+#
+# A defaults file *appends* to a list-valued key rather than replacing it, so
+# only the filters this paper adds belong here; restating the whole chain would
+# run `citeproc` a second time.
+#
+# The effective chain is doc.yaml's `citetitle.py, citeproc, wg21.py` followed
+# by the three below. The second `wg21.py` pass is what sees the
+# `[#]{.pnum}` spans and `::: wording` divs inside a spliced fragment -- they
+# reach it exactly as if they had been typed into the paper.
+# bibliography-header.py undoes the one thing the first pass did that the
+# second cannot do again.
+
+filters:
+  - filters/transclude.py
+  - filters/bibliography-header.py
+  - wg21.py
