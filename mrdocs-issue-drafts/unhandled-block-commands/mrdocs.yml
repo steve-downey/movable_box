@@ -1,0 +1,12 @@
+source-root: .
+input:
+  - include
+includes:
+  - include
+file-patterns:
+  - '*.hpp'
+include-symbols:
+  - 'demo::**'
+multipage: false
+generator: adoc
+output: out
