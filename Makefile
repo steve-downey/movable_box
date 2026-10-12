@@ -151,20 +151,52 @@ clean: $(_build_path)/CMakeCache.txt ## Clean the build artifacts
 realclean: ## Delete the build directory
 	rm -rf $(_build_path)
 
+# ---- Generated [movable.box] wording ---------------------------------------
+#
 # The proposed wording for [movable.box] is generated from the marked-up
 # header by beman.specgen; see scripts/gen-wording.sh. The fragments are
 # checked in, so the paper builds without specgen.
-WORDING_DIR ?= papers/wording
+
+SPECGEN ?= specgen
+
+WORDING_DIR := papers/wording
+WORDING_MANIFEST := $(WORDING_DIR)/movable_box.manifest
+# The fragments, read from the manifest the last run wrote, so a new `\rSec3`
+# in the header needs no edit here.
+WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
+    $(patsubst ./%,$(WORDING_DIR)/%,$(file < $(WORDING_MANIFEST)))
+# What specgen read to produce the fragments, the header and everything it
+# includes. Absent until the first run, hence $(wildcard) below.
+WORDING_DEPFILE := $(BUILD_DIR)/wording.d
+
+# A grouped target (GNU Make 4.3+): one run writes all of these, and make must
+# not run it once per fragment. Without specgen the checked-in fragments are
+# used as they are, with a warning, so the paper still builds; they are not
+# touched, so the warning repeats until specgen regenerates them.
+$(WORDING_FRAGMENTS) &: include/beman/movable_box/movable_box.hpp scripts/gen-wording.sh
+	@if command -v $(SPECGEN) > /dev/null 2>&1; then \
+	    mkdir -p $(dir $(WORDING_DEPFILE)) && \
+	    scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR) \
+	        --depfile $(CURDIR)/$(WORDING_DEPFILE) \
+	        $(addprefix --dep-target ,$(WORDING_FRAGMENTS)); \
+	else \
+	    echo "warning: '$(SPECGEN)' not found; using the checked-in wording" >&2; \
+	fi
+
+-include $(wildcard $(WORDING_DEPFILE))
 
 .PHONY: wording
-wording: ## Regenerate the [movable.box] wording fragments from the header
-	scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR)
+wording: $(WORDING_FRAGMENTS) ## Regenerate the [movable.box] wording fragments if the header changed
 
 .PHONY: wording-check
 wording-check: ## Check the checked-in wording matches what the header generates
 	rm -rf $(BUILD_DIR)/wording-check
 	scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
-	diff -r -x .stamp $(WORDING_DIR) $(BUILD_DIR)/wording-check
+	diff -r $(WORDING_DIR) $(BUILD_DIR)/wording-check
+
+.PHONY: papers
+papers: wording ## Regenerate the wording if needed, then rebuild the paper(s)
+	$(MAKE) -C papers
 
 .PHONY: env
 env:
