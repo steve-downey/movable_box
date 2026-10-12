@@ -272,8 +272,13 @@ docs: ## Build the docs with Doxygen
 	doxygen docs/Doxyfile
 
 .PHONY: mrdocs
-mrdocs: ## Build the docs with Doxygen
-	-rm -rf docs/adoc
+mrdocs: ## Build the docs with MrDocs
+	-rm -rf docs/adoc $(BUILD_DIR)/mrdocs
+	for header in $$(find include -name '*.hpp'); do \
+	    mkdir -p $(BUILD_DIR)/mrdocs/$$(dirname $$header) && \
+	    sed -E -f docs/specgen-doxygen.sed -f docs/specgen-mrdocs.sed $$header \
+	        > $(BUILD_DIR)/mrdocs/$$header || exit 1; \
+	done
 	cd docs && NO_COLOR=1 mrdocs mrdocs.yml 2>&1 | sed 's/\x1b\[[0-9;]*m//g'
 	find docs/adoc -name '*.adoc' | xargs asciidoctor
 

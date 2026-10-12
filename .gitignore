@@ -3,3 +3,8 @@ papers/generated/
 /.build/
 /.update-submodules
 /compile_commands.json
+
+# Generated documentation
+/docs/html
+/docs/latex
+/docs/adoc/
