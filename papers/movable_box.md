@@ -420,6 +420,13 @@ behavior, layout, or ABI of any ranges component.
 
 # Implementation Experience
 
+The proposed interface has been checked against all three shipping
+implementations of *movable-box*. In each, what the vendor's box lacks
+can be added without changing any layout. What remains is one wording
+decision, the self-assignment guarantee (Open Questions, item 5), and a
+conforming strengthening of the move assignment's `noexcept`, which
+needs no work.
+
 Three independent implementations of this type ship today inside
 libstdc++, libc++, and the Microsoft STL, exercised by the entire range
 adaptor test suite of each. range-v3's `semiregular_box` [@range-v3] is
@@ -519,10 +526,10 @@ wording is standalone (D5) and mandates no structure. A specification
 that made `movable_box` an `optional` with patches would put every
 view's layout back in play.
 
-The same suite has since been run against the other two
-implementations: libc++'s `std::ranges::__movable_box` (LLVM 17 through
-22) and the Microsoft STL's `std::ranges::_Movable_box` (the latest
-MSVC), built and executed as conformance targets in the reference
+The same suite also runs against the other two implementations:
+libc++'s `std::ranges::__movable_box` (LLVM 17 through 22) and the
+Microsoft STL's `std::ranges::_Movable_box` (the latest MSVC), built
+and executed as conformance targets in the reference
 implementation's CI [@beman-movable-box]. Neither box can host the
 suite raw. libstdc++'s could, but by an accident of structure: it
 publicly inherits from `optional`, which happens to supply every
@@ -575,18 +582,17 @@ The semantic divergences that remain fall into two families:
   in-source). As for libstdc++ above, this is conforming under
   [res.on.exception.handling] p5 and needs no work.
 
-Two smaller items are vendor-specific. Neither of libstdc++'s interface
-accidents recurs elsewhere — libc++ and the Microsoft STL both
-constrain their default constructors correctly. The Microsoft STL's
-`in_place` constructor template, however, is unconstrained and
-non-`explicit`, so `is_constructible_v` answers `true` for argument
-lists `T` cannot be constructed from; unobservable through the views,
-and additive to close.
+libstdc++'s default-construction accident does not recur: libc++ and
+the Microsoft STL both constrain their default constructors correctly.
+One smaller item is specific to the Microsoft STL: its `in_place`
+constructor template is unconstrained and non-`explicit`, so
+`is_constructible_v` answers `true` for argument lists `T` cannot be
+constructed from. That is unobservable through the views, and additive
+to close.
 
-The drop-in claim now stands as follows, for all three implementations:
-the missing interface is demonstrated additive with layouts unchanged,
-and the residue is one wording decision plus a conforming
-strengthening. The self-assignment postcondition of the proposed
+For all three implementations, then, the missing interface is
+demonstrated additive with layouts unchanged, and the residue is one
+wording decision plus a conforming strengthening. The self-assignment postcondition of the proposed
 [movable.box.assign] is provided by none of the three for copyable
 payloads, and by only libstdc++ for the movable discriminated case, so
 LEWG should decide it explicitly (Open Questions, item 5): keep the
