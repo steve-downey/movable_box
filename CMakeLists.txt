@@ -90,6 +90,15 @@ if(BEMAN_MOVABLE_BOX_BUILD_EXAMPLES)
 endif()
 
 # Coverage
+# Versioned toolchain files set GCOV_EXECUTABLE to match their compiler; fall
+# back to the unversioned tool so gcovr.cfg never names an empty executable.
+if(NOT GCOV_EXECUTABLE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(GCOV_EXECUTABLE "llvm-cov gcov")
+    else()
+        set(GCOV_EXECUTABLE "gcov")
+    endif()
+endif()
 configure_file("cmake/gcovr.cfg.in" gcovr.cfg @ONLY)
 
 add_custom_target(

@@ -8,5 +8,7 @@ html-theme = github.dark-blue
 html-self-contained = yes
 print-summary = yes
 filter = .*/include/beman/movable_box/.*
+# Relative to this file (the build dir): skip fetched dependencies such as Catch2.
+exclude-directory = _deps$
 coveralls = coverage.json
 coveralls-pretty = yes
