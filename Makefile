@@ -119,7 +119,7 @@ compile-headers: $(_build_path)/CMakeCache.txt ## Compile the headers
 
 .PHONY: install
 install: $(_build_path)/CMakeCache.txt compile ## Install the project
-	$(CMAKE) --install $(_build_path) --config $(CONFIG) --component beman.movable_box --verbose
+	$(CMAKE) --install $(_build_path) --config $(CONFIG) --component movable_box_Development --verbose
 
 .PHONY: clean-install
 clean-install:
@@ -309,9 +309,10 @@ docs-site: ## Build both references into the site published to gh-pages, in .bui
 .PHONY: testinstall
 testinstall: install
 testinstall: ## Test the installed package
-	mkdir -p installtest
-	$(CMAKE) -S installtest -B installtest/.build
-	$(CMAKE) --build  installtest/.build --target test
+	$(CMAKE) -S installtest -B installtest/.build \
+		-DCMAKE_PREFIX_PATH=$(abspath $(INSTALL_PREFIX))
+	$(CMAKE) --build installtest/.build
+	$(CTEST) --test-dir installtest/.build --output-on-failure
 
 .PHONY: clean-testinstall
 clean-testinstall:
@@ -323,15 +324,6 @@ realclean: clean-testinstall
 INFRA_REMOTE ?= https://github.com/bemanproject/infra.git
 INFRA_BRANCH ?= main
 
-.PHONY: subtree-pull
-subtree-pull: ## Pull latest infra changes via git subtree (squash)
-	git subtree pull --squash --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH) \
-		-m "Merge infra subtree from $(INFRA_REMOTE) $(INFRA_BRANCH)"
-
-.PHONY: subtree-pull-full
-subtree-pull-full: ## Pull infra with full history (for upstreaming)
-	git subtree pull --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH)
-
 .PHONY: subtree-split
 subtree-split: ## Split infra changes into a branch for upstreaming as a PR
 	git subtree split --prefix=infra -b infra-upstream
@@ -341,23 +333,14 @@ subtree-add: ## Initial import of infra as git subtree (squash)
 	git subtree add --squash --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH)
 
 ifeq ($(UV),)
-define install_uv_cmd
-pipx install uv
-endef
-
 define uv_error_message
 
 'uv' command not found.
 Please install uv or set the UV variable to the path of the uv binary.
-The makefile target "install-uv" will run ``$(install_uv_cmd)''
 endef
 
 $(error "$(uv_error_message)")
 endif
-
-.PHONY: install-uv
-install-uv: ## install uv via `pipx install uv`
-	$(install_uv_cmd)
 
 # Help target
 .PHONY: help
