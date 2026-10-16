@@ -154,13 +154,14 @@ realclean: ## Delete the build directory
 # ---- Generated [movable.box] wording ---------------------------------------
 #
 # The proposed wording for [movable.box] is generated from the marked-up
-# header by beman.specgen; see scripts/gen-wording.sh. The fragments are
-# checked in, so the paper builds without specgen.
+# header by beman.specgen; see scripts/gen-wording.sh. The generated files
+# are checked in, so the papers build without specgen.
 
-SPECGEN ?= specgen
+UVX ?= uvx
 
 WORDING_DIR := papers/wording
 WORDING_MANIFEST := $(WORDING_DIR)/movable_box.manifest
+LATEX_WORDING := $(WORDING_DIR)/movable_box.tex
 # The fragments, read from the manifest the last run wrote, so a new `\rSec3`
 # in the header needs no edit here.
 WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
@@ -168,35 +169,61 @@ WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
 # What specgen read to produce the fragments, the header and everything it
 # includes. Absent until the first run, hence $(wildcard) below.
 WORDING_DEPFILE := $(BUILD_DIR)/wording.d
+LATEX_WORDING_DEPFILE := $(BUILD_DIR)/wording-latex.d
 
 # A grouped target (GNU Make 4.3+): one run writes all of these, and make must
 # not run it once per fragment. Without specgen the checked-in fragments are
 # used as they are, with a warning, so the paper still builds; they are not
 # touched, so the warning repeats until specgen regenerates them.
 $(WORDING_FRAGMENTS) &: include/beman/movable_box/movable_box.hpp scripts/gen-wording.sh
-	@if command -v $(SPECGEN) > /dev/null 2>&1; then \
+	@if command -v $(UVX) > /dev/null 2>&1; then \
 	    mkdir -p $(dir $(WORDING_DEPFILE)) && \
 	    scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR) \
 	        --depfile $(CURDIR)/$(WORDING_DEPFILE) \
 	        $(addprefix --dep-target ,$(WORDING_FRAGMENTS)); \
 	else \
-	    echo "warning: '$(SPECGEN)' not found; using the checked-in wording" >&2; \
+	    echo "warning: '$(UVX)' not found; using the checked-in wording" >&2; \
+	fi
+
+$(LATEX_WORDING): include/beman/movable_box/movable_box.hpp scripts/gen-wording.sh
+	@if command -v $(UVX) > /dev/null 2>&1; then \
+	    mkdir -p $(dir $(LATEX_WORDING_DEPFILE)) && \
+	    SPECGEN_BACKEND=latex scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR) \
+	        --depfile $(CURDIR)/$(LATEX_WORDING_DEPFILE) \
+	        --dep-target $(LATEX_WORDING); \
+	else \
+	    echo "warning: '$(UVX)' not found; using the checked-in LaTeX wording" >&2; \
 	fi
 
 -include $(wildcard $(WORDING_DEPFILE))
+-include $(wildcard $(LATEX_WORDING_DEPFILE))
 
 .PHONY: wording
-wording: $(WORDING_FRAGMENTS) ## Regenerate the [movable.box] wording fragments if the header changed
+wording: $(WORDING_FRAGMENTS) $(LATEX_WORDING) ## Regenerate both forms of the [movable.box] wording
 
 .PHONY: wording-check
 wording-check: ## Check the checked-in wording matches what the header generates
 	rm -rf $(BUILD_DIR)/wording-check
 	scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
+	SPECGEN_BACKEND=latex scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
 	diff -r $(WORDING_DIR) $(BUILD_DIR)/wording-check
+
+.PHONY: clean-wording
+clean-wording: ## Delete generated wording build artifacts
+	rm -rf $(BUILD_DIR)/wording-check
+	rm -f $(WORDING_DEPFILE) $(LATEX_WORDING_DEPFILE)
+
+clean: clean-wording
 
 .PHONY: papers
 papers: wording ## Regenerate the wording if needed, then rebuild the paper(s)
-	$(MAKE) -C papers
+	$(MAKE) -C papers papers
+
+.PHONY: clean-papers
+clean-papers: ## Clean generated paper outputs
+	$(MAKE) -C papers clean
+
+clean: clean-papers
 
 .PHONY: env
 env:

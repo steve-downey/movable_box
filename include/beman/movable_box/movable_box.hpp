@@ -118,7 +118,6 @@ class movable_box {
 
 //! \constraints-in-decl
 //! \effects Equivalent to `movable_box(in_place)`.
-//! [*Note*: The contained value is value-initialized. — *end note*]
 template <class T>
     requires std::move_constructible<T> &&
              std::is_object_v<T>
@@ -198,8 +197,9 @@ template <class T>
 //! direct-non-list-initialized with `*rhs`. If the initialization exits via
 //! an exception, `*this` contains no value.
 //! \returns `*this`.
-//! \remarks The exception specification is equivalent to:
-//! `is_nothrow_copy_constructible_v<T> && (!copyable<T> || is_nothrow_copy_assignable_v<T>)`.
+//! \remarks The exception specification is equivalent to
+//! `is_nothrow_copy_constructible_v<T>` and, if `copyable<T>` is modeled,
+//! `is_nothrow_copy_assignable_v<T>`.
 //!
 //! This operator is trivial if `is_trivially_copy_constructible_v<T>`,
 //! `is_trivially_copy_assignable_v<T>`, and `is_trivially_destructible_v<T>`
@@ -247,8 +247,9 @@ template <class T>
 //! exits via an exception, `*this` contains no value. `rhs.has_value()` is
 //! unchanged.
 //! \returns `*this`.
-//! \remarks The exception specification is equivalent to:
-//! `is_nothrow_move_constructible_v<T> && (!movable<T> || is_nothrow_move_assignable_v<T>)`.
+//! \remarks The exception specification is equivalent to
+//! `is_nothrow_move_constructible_v<T>` and, if `movable<T>` is modeled,
+//! `is_nothrow_move_assignable_v<T>`.
 //!
 //! This operator is trivial if `is_trivially_move_constructible_v<T>`,
 //! `is_trivially_move_assignable_v<T>`, and `is_trivially_destructible_v<T>`

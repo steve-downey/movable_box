@@ -7,10 +7,11 @@
 # include/beman/movable_box/movable_box.hpp is the single source of the
 # proposed subclause's synopsis and item wording: its class body is the
 # synopsis, its `//!` docblocks are the wording, and its `\rSec3` markers place
-# each item. beman.specgen renders that as mpark/wg21 markdown, one fragment
-# per subclause, which papers/movable_box.md splices in through
-# papers/filters/transclude.py. The general subclause's prose stays in the
-# paper: it is not about any one declaration.
+# each item. beman.specgen renders that as mpark/wg21 Markdown fragments or
+# one C++ draft LaTeX file. papers/movable_box.md splices in the Markdown;
+# the minimal papers/movable_box_std.tex example inputs the LaTeX.
+# The general subclause's prose stays in each paper: it is not about any one
+# declaration.
 #
 # One header is one document, so this is a single `generate`; there is no
 # second document for `--validate` to see. The synopsis sits outside every
@@ -18,16 +19,18 @@
 # in. `--new-root movable.box` marks the whole subclause as proposed, so its
 # stable names are not looked up in the working draft.
 #
-# `--split` never deletes files left by an earlier run, so the ordered
-# manifest is written beside the fragments and is the record the paper's
-# include order is reconciled against. It is also what the paper build
-# depends on: it is rewritten on every run, and it is not a `.md` file, which
-# the vendored MPark.WG21 Makefile would pass to pandoc as an input.
+# The MPark backend writes split fragments and an ordered manifest beside
+# them. The manifest is the record the paper's include order is reconciled
+# against, and is not a `.md` file the vendored MPark.WG21 Makefile would
+# pass to pandoc as an input. The LaTeX example needs no assembly: it inputs
+# specgen's single joined output.
 #
 # Any arguments after the output directory are passed to `specgen generate`;
 # the top-level Makefile passes `--depfile` and `--dep-target` through them.
 # Paths in them must be absolute, because specgen runs from the output
 # directory.
+#
+# Set SPECGEN_BACKEND to `latex` for C++ draft LaTeX; the default is `mpark`.
 #
 # Usage: scripts/gen-wording.sh [output-directory [specgen-option...]]
 
@@ -38,24 +41,55 @@ IFS=$'\n\t'
 
 readonly REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
-SPECGEN="${SPECGEN:-specgen}"
+UVX="${UVX:-uvx}"
+SPECGEN_BACKEND="${SPECGEN_BACKEND:-mpark}"
 OUT_DIR="${1:-$REPO_ROOT/papers/wording}"
 shift $(( $# > 0 ? 1 : 0 ))
 
 readonly HEADER="$REPO_ROOT/include/beman/movable_box/movable_box.hpp"
-readonly MANIFEST="movable_box.manifest"
+readonly SPECGEN_INDEX="https://test.pypi.org/simple"
+readonly -a SPECGEN_CMD=(
+    "$UVX"
+    --index "$SPECGEN_INDEX"
+    beman-specgen
+)
+
+case "$SPECGEN_BACKEND" in
+    mpark)
+        readonly OUTPUT="movable_box.manifest"
+        readonly -a BACKEND_ARGS=(
+            --new-root movable.box
+            --base-heading-level 4
+            --split .
+            --root movable.box.general
+        )
+        ;;
+    latex)
+        readonly OUTPUT="/dev/null"
+        readonly -a BACKEND_ARGS=(
+            --base-section-depth 3
+            --output movable_box.tex
+        )
+        ;;
+    *)
+        echo "gen-wording: error: unknown SPECGEN_BACKEND '$SPECGEN_BACKEND'" >&2
+        exit 1
+        ;;
+esac
 
 # Flags are passed explicitly rather than through a compilation database,
 # because a header is not a translation unit in one. config.hpp falls back to
-# a non-modules build when the CMake-generated config header is absent, so the
-# source include directory is all the parse needs.
+# a non-modules build when the CMake-generated config header is absent.
+# Point clang at the system GCC installation so an isolated uvx environment
+# can discover the standard library without version-specific include paths.
 readonly -a CLANG_ARGS=(
     -std=c++2c
+    --gcc-toolchain=/usr
     "-I$REPO_ROOT/include"
 )
 
-if ! command -v "$SPECGEN" > /dev/null 2>&1; then
-    echo "gen-wording: error: '$SPECGEN' not found; set SPECGEN to its path" >&2
+if ! command -v "$UVX" > /dev/null 2>&1; then
+    echo "gen-wording: error: '$UVX' not found; set UVX to its path" >&2
     exit 1
 fi
 
@@ -66,23 +100,19 @@ mkdir -p "$OUT_DIR"
 FINDINGS="$(mktemp)"
 trap 'rm -f "$FINDINGS"' EXIT
 
-echo "gen-wording: movable_box.hpp -> movable.box.*"
-# Run from the output directory with a relative `--split` so the manifest
-# records `<stable name>.md` rather than a path particular to this machine.
+echo "gen-wording: movable_box.hpp -> $SPECGEN_BACKEND movable.box.*"
+# Run from the output directory so every generated path is portable.
 status=0
 (
     cd "$OUT_DIR"
-    "$SPECGEN" generate "$HEADER" \
+    "${SPECGEN_CMD[@]}" generate "$HEADER" \
         --no-compile-commands \
-        --backend mpark \
+        --backend "$SPECGEN_BACKEND" \
         --validate \
-        --new-root movable.box \
-        --base-heading-level 4 \
-        --split . \
-        --root movable.box.general \
+        "${BACKEND_ARGS[@]}" \
         "$@" \
         -- "${CLANG_ARGS[@]}" \
-        > "$MANIFEST" 2> "$FINDINGS"
+        > "$OUTPUT" 2> "$FINDINGS"
 ) || status=$?
 
 if [[ $status -ne 0 || -s "$FINDINGS" ]]; then

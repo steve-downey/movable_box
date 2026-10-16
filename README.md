@@ -99,10 +99,10 @@ You can disable building tests by setting CMake option `BEMAN_MOVABLE_BOX_BUILD_
 
 See the [Contributing Guidelines](CONTRIBUTING.md).
 
-The proposed wording for `[movable.box]` in [papers/movable_box.md](papers/movable_box.md) is generated from [include/beman/movable_box/movable_box.hpp](include/beman/movable_box/movable_box.hpp) by [beman.specgen](https://github.com/steve-downey/specgen).
-Change the wording by editing the header's `//!` docblocks, then run `make papers`, which regenerates the fragments under `papers/wording/` when the header, or any header it includes, has changed, and then rebuilds the paper.
-`make wording` does only the regeneration.
-Both need `specgen` on `PATH` (or `SPECGEN=` naming it); without it they warn and use the checked-in fragments, so the paper still builds.
+The proposed wording in [the WG21 Markdown paper](papers/movable_box.md) and [the minimal std-LaTeX paper](papers/movable_box_std.tex) is generated from [include/beman/movable_box/movable_box.hpp](include/beman/movable_box/movable_box.hpp) by [beman.specgen](https://github.com/steve-downey/specgen).
+Change the wording by editing the header's `//!` docblocks, then run `make papers`, which regenerates both the `.md` fragments and the joined `.tex` output under `papers/wording/` when the header, or any header it includes, has changed, and then rebuilds both papers.
+`make wording` does only the two-backend regeneration. The std-LaTeX example deliberately consists only of the paper and its `\input` lines; point TeX at the same `common.tex` and `stdtex/` support used by a standard LaTeX paper to compile it.
+Wording regeneration runs `uvx --index https://test.pypi.org/simple beman-specgen`; without `uvx` it warns and uses the checked-in output, so the papers still build.
 `make wording-check` fails if the checked-in fragments have drifted from the header.
 
 The same header's `///` comments are API documentation for Doxygen and MrDocs, which specgen ignores; `make docs-site` builds the published references locally (see [docs/README.md](docs/README.md)).

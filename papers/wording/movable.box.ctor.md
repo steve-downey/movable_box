@@ -7,7 +7,7 @@ constexpr movable_box() noexcept(is_nothrow_default_constructible_v<T>)
   requires default_initializable<T>;
 ```
 
-[#]{.pnum} *Effects*: Equivalent to `movable_box(in_place)`. [*Note*: The contained value is value-initialized. — *end note*]
+[#]{.pnum} *Effects*: Equivalent to `movable_box(in_place)`.
 
 ```cpp
 constexpr explicit movable_box(const T& t)

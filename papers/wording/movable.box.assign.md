@@ -14,7 +14,7 @@ constexpr movable_box& operator=(const movable_box& rhs) noexcept($see below$)
 
 [#]{.pnum} *Returns*: `*this`.
 
-[#]{.pnum} *Remarks*: The exception specification is equivalent to: `is_nothrow_copy_constructible_v<T> && (!copyable<T> || is_nothrow_copy_assignable_v<T>)`.
+[#]{.pnum} *Remarks*: The exception specification is equivalent to `is_nothrow_copy_constructible_v<T>` and, if `copyable<T>` is modeled, `is_nothrow_copy_assignable_v<T>`.
 
 [#]{.pnum} This operator is trivial if `is_trivially_copy_constructible_v<T>`, `is_trivially_copy_assignable_v<T>`, and `is_trivially_destructible_v<T>` are all `true`.
 
@@ -29,7 +29,7 @@ constexpr movable_box& operator=(movable_box&& rhs) noexcept($see below$);
 
 [#]{.pnum} *Returns*: `*this`.
 
-[#]{.pnum} *Remarks*: The exception specification is equivalent to: `is_nothrow_move_constructible_v<T> && (!movable<T> || is_nothrow_move_assignable_v<T>)`.
+[#]{.pnum} *Remarks*: The exception specification is equivalent to `is_nothrow_move_constructible_v<T>` and, if `movable<T>` is modeled, `is_nothrow_move_assignable_v<T>`.
 
 [#]{.pnum} This operator is trivial if `is_trivially_move_constructible_v<T>`, `is_trivially_move_assignable_v<T>`, and `is_trivially_destructible_v<T>` are all `true`.
 
