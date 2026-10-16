@@ -105,7 +105,7 @@ Change the wording by editing the header's `//!` docblocks, then run `make paper
 Wording regeneration runs `uvx --index https://test.pypi.org/simple beman-specgen`; without `uvx` it warns and uses the checked-in output, so the papers still build.
 `make wording-check` fails if the checked-in fragments have drifted from the header.
 
-The same header's `///` comments are API documentation for Doxygen and MrDocs, which specgen ignores; `make docs-site` builds the published references locally (see [docs/README.md](docs/README.md)).
+The same header's `///` comments are API documentation for Doxygen and MrDocs, which specgen ignores; `make docs` builds the published references locally (see [docs/README.md](docs/README.md)).
 
 ## Integrate beman.movable_box into your project
 

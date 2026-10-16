@@ -277,11 +277,6 @@ lint: venv
 lint: ## Run all configured tools in pre-commit
 	$(PRE_COMMIT) run -a
 
-.PHONY: lint-manual
-lint-manual: venv
-lint-manual: ## Run all manual tools in pre-commit
-	$(PRE_COMMIT) run --hook-stage manual -a
-
 .PHONY: coverage
 coverage: ## Build and run the tests with the GCOV profile and process the results
 coverage: venv $(_build_path)/CMakeCache.txt
@@ -293,16 +288,16 @@ coverage: venv $(_build_path)/CMakeCache.txt
 view-coverage: ## View the coverage report
 	sensible-browser $(_build_path)/coverage/coverage.html
 
-.PHONY: docs
-docs: ## Build the docs with Doxygen
+.PHONY: doxygen
+doxygen: ## Build the docs with Doxygen
 	doxygen docs/Doxyfile
 
 .PHONY: mrdocs
 mrdocs: ## Build the docs with MrDocs
 	scripts/build-mrdocs.sh
 
-.PHONY: docs-site
-docs-site: ## Build both references into the site published to gh-pages, in .build/site
+.PHONY: docs
+docs: ## Build both references into the site published to gh-pages, in .build/site
 	scripts/build-docs-site.sh $(CURDIR)/$(BUILD_DIR)/site
 
 .PHONY: testinstall

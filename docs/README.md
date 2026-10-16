@@ -32,9 +32,9 @@ Neither tool knows specgen's commands, so each is taught them differently:
 
 | Command | Builds | Needs |
 |---|---|---|
-| `make docs` | `docs/html/` | Doxygen 1.15 or later |
+| `make doxygen` | `docs/html/` | Doxygen 1.15 or later |
 | `make mrdocs` | `docs/adoc/`, AsciiDoc and HTML | MrDocs 2026.9.29 or later, Asciidoctor |
-| `make docs-site` | `.build/site/`, the tree that is published | all of the above |
+| `make docs` | `.build/site/`, the tree that is published | all of the above |
 
 All three outputs are ignored by git.
 `MRDOCS`, `ASCIIDOCTOR` and `DOXYGEN` name the tools if they are not on `PATH`.
@@ -42,7 +42,7 @@ All three outputs are ignored by git.
 ## Publishing
 
 [docs-gh-pages.yml](../.github/workflows/docs-gh-pages.yml) runs on every push to `main`.
-It installs pinned, checksum-verified releases of Doxygen and MrDocs, runs [scripts/build-docs-site.sh](../scripts/build-docs-site.sh), the same script as `make docs-site`, and pushes the result to the `gh-pages` branch.
+It installs pinned, checksum-verified releases of Doxygen and MrDocs, runs [scripts/build-docs-site.sh](../scripts/build-docs-site.sh), the same script as `make docs`, and pushes the result to the `gh-pages` branch.
 
 A repository has one `gh-pages` branch, so the two references are sibling directories in one tree and deploy together:
 
