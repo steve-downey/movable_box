@@ -6,10 +6,14 @@
 
 #include <beman/movable_box/config.hpp>
 
-#include <concepts>
-#include <memory>
-#include <type_traits>
-#include <utility>
+// The module interface unit gets these from `import std;`; textually including them again in its
+// purview redefines the standard library entities (MSVC rejects it outright).
+#if !defined(BEMAN_MOVABLE_BOX_INCLUDED_FROM_INTERFACE_UNIT)
+    #include <concepts>
+    #include <memory>
+    #include <type_traits>
+    #include <utility>
+#endif
 
 #if BEMAN_MOVABLE_BOX_USE_MODULES() && !defined(BEMAN_MOVABLE_BOX_INCLUDED_FROM_INTERFACE_UNIT)
 
