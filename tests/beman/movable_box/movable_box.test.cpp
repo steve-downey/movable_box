@@ -229,16 +229,23 @@ struct BoxedMovable {
     }
 };
 
-// Copy-constructible but not copyable, with a potentially-throwing copy
-// constructor: forces a discriminant, like ThrowingCopy, but instrumented so
-// destructor calls can be counted.
+// Copy-constructible but not copyable, with a copy constructor that can be
+// armed to throw: forces a discriminant, like ThrowingCopy, but instrumented
+// so destructor calls can be counted, including those of an empty box.
 struct BoxedCounted {
     inline static Counters counters{};
+    inline static bool     armed = false;
 
     int value;
 
     explicit BoxedCounted(int v) : value(v) { ++counters.value_ctor; }
-    BoxedCounted(const BoxedCounted& o) noexcept(false) : value(o.value) { ++counters.copy_ctor; }
+    BoxedCounted(const BoxedCounted& o) noexcept(false) : value(o.value) {
+        if (armed) {
+            armed = false;
+            throw ThrowingCopyError{};
+        }
+        ++counters.copy_ctor;
+    }
     BoxedCounted(BoxedCounted&& o) noexcept : value(o.value) { ++counters.move_ctor; }
     BoxedCounted& operator=(const BoxedCounted&) = delete;
     BoxedCounted& operator=(BoxedCounted&&)      = delete;
@@ -500,6 +507,40 @@ TEST_CASE("the destructor destroys the contained value exactly once", "[movable_
     }
 }
 
+TEST_CASE("an empty boxed T is copied, moved, and destroyed as empty", "[movable_box]") {
+    BoxedCounted::counters.reset();
+    {
+        box_under_test::movable_box<BoxedCounted> empty(std::in_place, 1);
+        box_under_test::movable_box<BoxedCounted> source(std::in_place, 2);
+
+        BoxedCounted::armed = true;
+        CHECK_THROWS_AS(empty = source, ThrowingCopyError);
+        REQUIRE_FALSE(empty.has_value());
+
+        // [movable.box.ctor]p8: move construction from an empty box yields
+        // an empty box, and rhs.has_value() is unchanged.
+        box_under_test::movable_box<BoxedCounted> moved_from_empty{std::move(empty)};
+        CHECK_FALSE(moved_from_empty.has_value());
+        CHECK_FALSE(empty.has_value());
+
+        // [movable.box.assign]: the target's value is destroyed and, rhs
+        // being empty, none is constructed.
+        box_under_test::movable_box<BoxedCounted> copy_target(std::in_place, 3);
+        copy_target = empty;
+        CHECK_FALSE(copy_target.has_value());
+
+        box_under_test::movable_box<BoxedCounted> move_target(std::in_place, 4);
+        move_target = std::move(empty);
+        CHECK_FALSE(move_target.has_value());
+        CHECK_FALSE(empty.has_value());
+    }
+    // Four empty boxes are destroyed here; only the values ever constructed
+    // are destroyed, each exactly once.
+    const auto& n = BoxedCounted::counters;
+    CHECK(n.copy_ctor == 0);
+    CHECK(n.dtor == n.value_ctor + n.copy_ctor + n.move_ctor);
+}
+
 TEST_CASE("dereference returns references to the same object", "[movable_box]") {
     box_under_test::movable_box<Regular> box(std::in_place, 1, 2);
     const auto&                          cbox = box;
@@ -588,6 +629,31 @@ TEST_CASE("self-assignment is a no-op", "[movable_box]") {
     CHECK(throwing.has_value());
     CHECK(throwing->value == 7);
     ThrowingCopy::armed = false;
+
+    box_under_test::movable_box<BoxedCounted> boxed(std::in_place, 3);
+    auto&                                     boxed_ref = boxed;
+
+    BoxedCounted::counters.reset();
+    boxed = boxed_ref;
+    CHECK(BoxedCounted::counters.dtor == 0);
+    CHECK(BoxedCounted::counters.copy_ctor == 0);
+    CHECK(boxed.has_value());
+    CHECK(boxed->value == 3);
+
+    boxed = std::move(boxed_ref);
+    CHECK(BoxedCounted::counters.dtor == 0);
+    CHECK(BoxedCounted::counters.move_ctor == 0);
+    CHECK(boxed.has_value());
+    CHECK(boxed->value == 3);
+
+    box_under_test::movable_box<MoveOnly> move_only(std::in_place, 4);
+    auto&                                 move_only_ref = move_only;
+
+    MoveOnly::counters.reset();
+    move_only = std::move(move_only_ref);
+    CHECK(MoveOnly::counters.dtor == 0);
+    CHECK(MoveOnly::counters.move_ctor == 0);
+    CHECK(move_only->value == 4);
 }
 
 TEST_CASE("self-assignment of a copyable payload has no effects",
