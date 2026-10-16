@@ -54,8 +54,9 @@ if(NOT BEMAN_MOVABLE_BOX_USE_MODULES)
         # semantics) in LLVM 17; the header probe keeps older libc++s out.
         check_cxx_source_compiles(
             "#include <version>
-             #if !defined(_LIBCPP_VERSION) || __cpp_lib_ranges < 202207L \\
-                 || !__has_include(<__ranges/movable_box.h>)
+             #if !defined(_LIBCPP_VERSION) || __cpp_lib_ranges < 202207L
+             #error not libc++ with movable-box semantics
+             #elif !__has_include(<__ranges/movable_box.h>)
              #error not libc++ with movable-box semantics
              #endif
              int main() {}"

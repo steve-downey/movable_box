@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required(VERSION 3.30...4.3)
+cmake_minimum_required(VERSION 3.30...4.4)
 
 include(infra/cmake/enable-experimental-import-std.cmake)
 
@@ -25,7 +25,11 @@ option(
     ${PROJECT_IS_TOP_LEVEL}
 )
 
-option(BEMAN_MOVABLE_BOX_USE_MODULES "Provide beman.movable_box as a C++ module" OFF)
+option(
+    BEMAN_MOVABLE_BOX_USE_MODULES
+    "Provide beman.movable_box as a C++ module"
+    OFF
+)
 
 if(BEMAN_MOVABLE_BOX_USE_MODULES)
     set(CMAKE_CXX_SCAN_FOR_MODULES ON)
