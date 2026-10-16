@@ -7,3 +7,5 @@
 disabled_rules: []
 ignored_paths:
   - infra/
+  - papers/wg21/
+  - papers/wg21-latex/
