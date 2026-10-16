@@ -99,7 +99,7 @@ $(_build_path)/compile_commands.json : $(_build_path)/CMakeCache.txt
 
 .PHONY: compile_commands.json
 compile_commands.json: $(_build_path)/compile_commands.json
-compile_commands.json: ## symlink the current compile commands db
+compile_commands.json:
 	if [ "$(shell readlink compile_commands.json)" != "$(_build_path)/compile_commands.json" ] ; then \
 		ln -sf $(_build_path)/compile_commands.json ; \
 	fi
@@ -209,7 +209,7 @@ wording-check: ## Check the checked-in wording matches what the header generates
 	diff -r $(WORDING_DIR) $(BUILD_DIR)/wording-check
 
 .PHONY: clean-wording
-clean-wording: ## Delete generated wording build artifacts
+clean-wording:
 	rm -rf $(BUILD_DIR)/wording-check
 	rm -f $(WORDING_DEPFILE) $(LATEX_WORDING_DEPFILE)
 
@@ -220,7 +220,7 @@ papers: wording ## Regenerate the wording if needed, then rebuild the paper(s)
 	$(MAKE) -C papers papers
 
 .PHONY: clean-papers
-clean-papers: ## Clean generated paper outputs
+clean-papers:
 	$(MAKE) -C papers clean
 
 clean: clean-papers
@@ -242,7 +242,6 @@ venv: $(VENV)/$(MARKER)
 
 .PHONY: clean-venv
 clean-venv:
-clean-venv: ## Delete python virtual env
 	-rm -rf $(VENV)
 
 realclean: clean-venv
