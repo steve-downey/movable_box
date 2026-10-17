@@ -1,0 +1,262 @@
+\begin{codeblock}
+namespace std {
+  template<class T>
+    requires move_constructible<T> && is_object_v<T>
+  class @\libglobal{movable_box}@ {
+  public:
+    using @\libmember{value_type}{movable_box}@ = T;
+
+    // \ref{movable.box.ctor}, constructors
+    constexpr movable_box() noexcept(is_nothrow_default_constructible_v<T>)
+      requires default_initializable<T>;
+    constexpr explicit movable_box(const T& t)
+      requires copy_constructible<T>;
+    constexpr explicit movable_box(T&& t);
+    template<class... Args>
+      requires is_constructible_v<T, Args...>
+    constexpr explicit movable_box(in_place_t, Args&&... args);
+
+    constexpr movable_box(const movable_box& rhs)
+      requires copy_constructible<T>;
+    constexpr movable_box(movable_box&& rhs) noexcept(is_nothrow_move_constructible_v<T>);
+
+    // \ref{movable.box.dtor}, destructor
+    constexpr ~movable_box();
+
+    // \ref{movable.box.assign}, assignment
+    constexpr movable_box& operator=(const movable_box& rhs) noexcept(@\seebelow@)
+      requires copy_constructible<T>;
+    constexpr movable_box& operator=(movable_box&& rhs) noexcept(@\seebelow@);
+
+    // \ref{movable.box.obs}, observers
+    constexpr bool has_value() const noexcept;
+    constexpr explicit operator bool() const noexcept;
+
+    constexpr T& operator*() & noexcept;
+    constexpr const T& operator*() const& noexcept;
+    constexpr T&& operator*() && noexcept;
+    constexpr const T&& operator*() const&& noexcept;
+
+    constexpr T* operator->() noexcept;
+    constexpr const T* operator->() const noexcept;
+  };
+}
+\end{codeblock}
+
+\rSec3[movable.box.ctor]{Constructors}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+constexpr movable_box() noexcept(is_nothrow_default_constructible_v<T>)
+  requires default_initializable<T>;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+Equivalent to \tcode{movable_box(in_place)}.
+\end{itemdescr}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+constexpr explicit movable_box(const T& t)
+  requires copy_constructible<T>;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+Direct-non-list-initializes the contained value with \tcode{t}.
+\end{itemdescr}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+constexpr explicit movable_box(T&& t);
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+Direct-non-list-initializes the contained value with \tcode{std::move(t)}.
+\end{itemdescr}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+template<class... Args> constexpr explicit movable_box(in_place_t, Args&&... args);
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\constraints
+\tcode{is_constructible_v<T, Args...>} is \tcode{true}.
+
+\pnum
+\effects
+Direct-non-list-initializes the contained value with \tcode{std::forward<Args>(args)...}.
+\end{itemdescr}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+constexpr movable_box(const movable_box& rhs)
+  requires copy_constructible<T>;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+If \tcode{rhs} contains a value, direct-non-list-initializes the contained value with \tcode{*rhs}; otherwise, \tcode{*this} contains no value.
+
+\pnum
+\remarks
+This constructor is trivial if \tcode{is_trivially_copy_constructible_v<T>} is \tcode{true}.
+\end{itemdescr}
+
+\indexlibraryctor{movable_box}%
+\begin{itemdecl}
+constexpr movable_box(movable_box&& rhs) noexcept(is_nothrow_move_constructible_v<T>);
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+If \tcode{rhs} contains a value, direct-non-list-initializes the contained value with \tcode{std::move(*rhs)}; otherwise, \tcode{*this} contains no value. \tcode{rhs.has_value()} is unchanged.
+
+\pnum
+\remarks
+This constructor is trivial if \tcode{is_trivially_move_constructible_v<T>} is \tcode{true}.
+\end{itemdescr}
+
+\rSec3[movable.box.dtor]{Destructor}
+
+\indexlibrarydtor{movable_box}%
+\begin{itemdecl}
+constexpr ~movable_box();
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+Destroys the contained value, if any.
+
+\pnum
+\remarks
+This destructor is trivial if \tcode{is_trivially_destructible_v<T>} is \tcode{true}.
+\end{itemdescr}
+
+\rSec3[movable.box.assign]{Assignment}
+
+\indexlibrarymember{operator=}{movable_box}%
+\begin{itemdecl}
+constexpr movable_box& operator=(const movable_box& rhs) noexcept(@\seebelow@)
+  requires copy_constructible<T>;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+If \tcode{this == addressof(rhs)} is \tcode{true}, no effects. Otherwise:
+\begin{itemize}
+\item If \tcode{copyable<T>} is modeled: if \tcode{*this} and \tcode{rhs} each contain a value, the contained value of \tcode{*this} is copy-assigned from \tcode{*rhs}; otherwise, if \tcode{rhs} contains a value, a contained value is direct-non-list-initialized with \tcode{*rhs}; otherwise, the contained value of \tcode{*this}, if any, is destroyed.
+\item Otherwise: the contained value of \tcode{*this}, if any, is destroyed; then, if \tcode{rhs} contains a value, a contained value is direct-non-list-initialized with \tcode{*rhs}. If the initialization exits via an exception, \tcode{*this} contains no value.
+\end{itemize}
+
+\pnum
+\returns
+\tcode{*this}.
+
+\pnum
+\remarks
+The exception specification is equivalent to \tcode{is_nothrow_copy_constructible_v<T>} and, if \tcode{copyable<T>} is modeled, \tcode{is_nothrow_copy_assignable_v<T>}.
+
+\pnum
+This operator is trivial if \tcode{is_trivially_copy_constructible_v<T>}, \tcode{is_trivially_copy_assignable_v<T>}, and \tcode{is_trivially_destructible_v<T>} are all \tcode{true}.
+\end{itemdescr}
+
+\indexlibrarymember{operator=}{movable_box}%
+\begin{itemdecl}
+constexpr movable_box& operator=(movable_box&& rhs) noexcept(@\seebelow@);
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\effects
+If \tcode{this == addressof(rhs)} is \tcode{true}, no effects. Otherwise:
+\begin{itemize}
+\item If \tcode{movable<T>} is modeled: if \tcode{*this} and \tcode{rhs} each contain a value, the contained value of \tcode{*this} is move-assigned from \tcode{*rhs}; otherwise, if \tcode{rhs} contains a value, a contained value is direct-non-list-initialized with \tcode{std::move(*rhs)}; otherwise, the contained value of \tcode{*this}, if any, is destroyed. \tcode{rhs.has_value()} is unchanged.
+\item Otherwise: the contained value of \tcode{*this}, if any, is destroyed; then, if \tcode{rhs} contains a value, a contained value is direct-non-list-initialized with \tcode{std::move(*rhs)}. If the initialization exits via an exception, \tcode{*this} contains no value. \tcode{rhs.has_value()} is unchanged.
+\end{itemize}
+
+\pnum
+\returns
+\tcode{*this}.
+
+\pnum
+\remarks
+The exception specification is equivalent to \tcode{is_nothrow_move_constructible_v<T>} and, if \tcode{movable<T>} is modeled, \tcode{is_nothrow_move_assignable_v<T>}.
+
+\pnum
+This operator is trivial if \tcode{is_trivially_move_constructible_v<T>}, \tcode{is_trivially_move_assignable_v<T>}, and \tcode{is_trivially_destructible_v<T>} are all \tcode{true}.
+\end{itemdescr}
+
+\rSec3[movable.box.obs]{Observers}
+
+\indexlibrarymember{has_value}{movable_box}%
+\indexlibrarymember{operator bool}{movable_box}%
+\begin{itemdecl}
+constexpr bool has_value() const noexcept;
+constexpr explicit operator bool() const noexcept;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\returns
+\tcode{true} if and only if \tcode{*this} contains a value.
+\end{itemdescr}
+
+\indexlibrarymember{operator*}{movable_box}%
+\begin{itemdecl}
+constexpr T& operator*() & noexcept;
+constexpr const T& operator*() const& noexcept;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\expects
+\tcode{*this} contains a value.
+
+\pnum
+\returns
+A reference to the contained value.
+\end{itemdescr}
+
+\indexlibrarymember{operator*}{movable_box}%
+\begin{itemdecl}
+constexpr T&& operator*() && noexcept;
+constexpr const T&& operator*() const&& noexcept;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\expects
+\tcode{*this} contains a value.
+
+\pnum
+\returns
+\tcode{std::move(}the contained value\tcode{)}.
+\end{itemdescr}
+
+\indexlibrarymember{operator->}{movable_box}%
+\begin{itemdecl}
+constexpr T* operator->() noexcept;
+constexpr const T* operator->() const noexcept;
+\end{itemdecl}
+
+\begin{itemdescr}
+\pnum
+\expects
+\tcode{*this} contains a value.
+
+\pnum
+\returns
+\tcode{addressof(}the contained value\tcode{)}.
+\end{itemdescr}

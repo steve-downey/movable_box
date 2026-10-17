@@ -99,7 +99,7 @@ $(_build_path)/compile_commands.json : $(_build_path)/CMakeCache.txt
 
 .PHONY: compile_commands.json
 compile_commands.json: $(_build_path)/compile_commands.json
-compile_commands.json: ## symlink the current compile commands db
+compile_commands.json:
 	if [ "$(shell readlink compile_commands.json)" != "$(_build_path)/compile_commands.json" ] ; then \
 		ln -sf $(_build_path)/compile_commands.json ; \
 	fi
@@ -119,7 +119,7 @@ compile-headers: $(_build_path)/CMakeCache.txt ## Compile the headers
 
 .PHONY: install
 install: $(_build_path)/CMakeCache.txt compile ## Install the project
-	$(CMAKE) --install $(_build_path) --config $(CONFIG) --component beman.movable_box --verbose
+	$(CMAKE) --install $(_build_path) --config $(CONFIG) --component movable_box_Development --verbose
 
 .PHONY: clean-install
 clean-install:
@@ -154,13 +154,14 @@ realclean: ## Delete the build directory
 # ---- Generated [movable.box] wording ---------------------------------------
 #
 # The proposed wording for [movable.box] is generated from the marked-up
-# header by beman.specgen; see scripts/gen-wording.sh. The fragments are
-# checked in, so the paper builds without specgen.
+# header by beman.specgen; see scripts/gen-wording.sh. The generated files
+# are checked in, so the papers build without specgen.
 
-SPECGEN ?= specgen
+UVX ?= uvx
 
 WORDING_DIR := papers/wording
 WORDING_MANIFEST := $(WORDING_DIR)/movable_box.manifest
+LATEX_WORDING := $(WORDING_DIR)/movable_box.tex
 # The fragments, read from the manifest the last run wrote, so a new `\rSec3`
 # in the header needs no edit here.
 WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
@@ -168,35 +169,61 @@ WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
 # What specgen read to produce the fragments, the header and everything it
 # includes. Absent until the first run, hence $(wildcard) below.
 WORDING_DEPFILE := $(BUILD_DIR)/wording.d
+LATEX_WORDING_DEPFILE := $(BUILD_DIR)/wording-latex.d
 
 # A grouped target (GNU Make 4.3+): one run writes all of these, and make must
 # not run it once per fragment. Without specgen the checked-in fragments are
 # used as they are, with a warning, so the paper still builds; they are not
 # touched, so the warning repeats until specgen regenerates them.
 $(WORDING_FRAGMENTS) &: include/beman/movable_box/movable_box.hpp scripts/gen-wording.sh
-	@if command -v $(SPECGEN) > /dev/null 2>&1; then \
+	@if command -v $(UVX) > /dev/null 2>&1; then \
 	    mkdir -p $(dir $(WORDING_DEPFILE)) && \
 	    scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR) \
 	        --depfile $(CURDIR)/$(WORDING_DEPFILE) \
 	        $(addprefix --dep-target ,$(WORDING_FRAGMENTS)); \
 	else \
-	    echo "warning: '$(SPECGEN)' not found; using the checked-in wording" >&2; \
+	    echo "warning: '$(UVX)' not found; using the checked-in wording" >&2; \
+	fi
+
+$(LATEX_WORDING): include/beman/movable_box/movable_box.hpp scripts/gen-wording.sh
+	@if command -v $(UVX) > /dev/null 2>&1; then \
+	    mkdir -p $(dir $(LATEX_WORDING_DEPFILE)) && \
+	    SPECGEN_BACKEND=latex scripts/gen-wording.sh $(CURDIR)/$(WORDING_DIR) \
+	        --depfile $(CURDIR)/$(LATEX_WORDING_DEPFILE) \
+	        --dep-target $(LATEX_WORDING); \
+	else \
+	    echo "warning: '$(UVX)' not found; using the checked-in LaTeX wording" >&2; \
 	fi
 
 -include $(wildcard $(WORDING_DEPFILE))
+-include $(wildcard $(LATEX_WORDING_DEPFILE))
 
 .PHONY: wording
-wording: $(WORDING_FRAGMENTS) ## Regenerate the [movable.box] wording fragments if the header changed
+wording: $(WORDING_FRAGMENTS) $(LATEX_WORDING) ## Regenerate both forms of the [movable.box] wording
 
 .PHONY: wording-check
 wording-check: ## Check the checked-in wording matches what the header generates
 	rm -rf $(BUILD_DIR)/wording-check
 	scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
+	SPECGEN_BACKEND=latex scripts/gen-wording.sh $(CURDIR)/$(BUILD_DIR)/wording-check
 	diff -r $(WORDING_DIR) $(BUILD_DIR)/wording-check
+
+.PHONY: clean-wording
+clean-wording:
+	rm -rf $(BUILD_DIR)/wording-check
+	rm -f $(WORDING_DEPFILE) $(LATEX_WORDING_DEPFILE)
+
+clean: clean-wording
 
 .PHONY: papers
 papers: wording ## Regenerate the wording if needed, then rebuild the paper(s)
-	$(MAKE) -C papers
+	$(MAKE) -C papers papers
+
+.PHONY: clean-papers
+clean-papers:
+	$(MAKE) -C papers clean
+
+clean: clean-papers
 
 .PHONY: env
 env:
@@ -215,7 +242,6 @@ venv: $(VENV)/$(MARKER)
 
 .PHONY: clean-venv
 clean-venv:
-clean-venv: ## Delete python virtual env
 	-rm -rf $(VENV)
 
 realclean: clean-venv
@@ -251,11 +277,6 @@ lint: venv
 lint: ## Run all configured tools in pre-commit
 	$(PRE_COMMIT) run -a
 
-.PHONY: lint-manual
-lint-manual: venv
-lint-manual: ## Run all manual tools in pre-commit
-	$(PRE_COMMIT) run --hook-stage manual -a
-
 .PHONY: coverage
 coverage: ## Build and run the tests with the GCOV profile and process the results
 coverage: venv $(_build_path)/CMakeCache.txt
@@ -267,24 +288,25 @@ coverage: venv $(_build_path)/CMakeCache.txt
 view-coverage: ## View the coverage report
 	sensible-browser $(_build_path)/coverage/coverage.html
 
-.PHONY: docs
-docs: ## Build the docs with Doxygen
+.PHONY: doxygen
+doxygen: ## Build the docs with Doxygen
 	doxygen docs/Doxyfile
 
 .PHONY: mrdocs
 mrdocs: ## Build the docs with MrDocs
 	scripts/build-mrdocs.sh
 
-.PHONY: docs-site
-docs-site: ## Build both references into the site published to gh-pages, in .build/site
+.PHONY: docs
+docs: ## Build both references into the site published to gh-pages, in .build/site
 	scripts/build-docs-site.sh $(CURDIR)/$(BUILD_DIR)/site
 
 .PHONY: testinstall
 testinstall: install
 testinstall: ## Test the installed package
-	mkdir -p installtest
-	$(CMAKE) -S installtest -B installtest/.build
-	$(CMAKE) --build  installtest/.build --target test
+	$(CMAKE) -S installtest -B installtest/.build \
+		-DCMAKE_PREFIX_PATH=$(abspath $(INSTALL_PREFIX))
+	$(CMAKE) --build installtest/.build
+	$(CTEST) --test-dir installtest/.build --output-on-failure
 
 .PHONY: clean-testinstall
 clean-testinstall:
@@ -296,15 +318,6 @@ realclean: clean-testinstall
 INFRA_REMOTE ?= https://github.com/bemanproject/infra.git
 INFRA_BRANCH ?= main
 
-.PHONY: subtree-pull
-subtree-pull: ## Pull latest infra changes via git subtree (squash)
-	git subtree pull --squash --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH) \
-		-m "Merge infra subtree from $(INFRA_REMOTE) $(INFRA_BRANCH)"
-
-.PHONY: subtree-pull-full
-subtree-pull-full: ## Pull infra with full history (for upstreaming)
-	git subtree pull --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH)
-
 .PHONY: subtree-split
 subtree-split: ## Split infra changes into a branch for upstreaming as a PR
 	git subtree split --prefix=infra -b infra-upstream
@@ -314,23 +327,14 @@ subtree-add: ## Initial import of infra as git subtree (squash)
 	git subtree add --squash --prefix=infra $(INFRA_REMOTE) $(INFRA_BRANCH)
 
 ifeq ($(UV),)
-define install_uv_cmd
-pipx install uv
-endef
-
 define uv_error_message
 
 'uv' command not found.
 Please install uv or set the UV variable to the path of the uv binary.
-The makefile target "install-uv" will run ``$(install_uv_cmd)''
 endef
 
 $(error "$(uv_error_message)")
 endif
-
-.PHONY: install-uv
-install-uv: ## install uv via `pipx install uv`
-	$(install_uv_cmd)
 
 # Help target
 .PHONY: help
