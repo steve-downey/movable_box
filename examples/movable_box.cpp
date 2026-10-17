@@ -8,9 +8,6 @@
 // standard library's own *movable-box* does for transform_view, filter_view,
 // and friends ([range.move.wrap]) -- and restores the concept.
 
-#include <beman/movable_box/config.hpp>
-#include <beman/movable_box/movable_box.hpp>
-
 #include <concepts>
 #include <functional>
 #include <iostream>
@@ -18,6 +15,11 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+// Last: in a modules build this header imports beman.movable_box, and GCC cannot include standard
+// headers after an import that has already brought them in.
+#include <beman/movable_box/config.hpp>
+#include <beman/movable_box/movable_box.hpp>
 
 namespace {
 
@@ -127,7 +129,7 @@ int main() {
     static_assert(std::is_copy_assignable_v<decltype(a)>);              // the box is, though
 
     std::cout << "a = {" << a->tag << ", " << a->value << "}\n";
-    a = b; // destroy-then-copy-construct, since fixed_point isn't copyable
+    a          = b; // destroy-then-copy-construct, since fixed_point isn't copyable
     auto& self = a;
     a          = self; // self-assignment is specified to have no effects
     std::cout << "a = {" << a->tag << ", " << a->value << "}\n";

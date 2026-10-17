@@ -46,4 +46,4 @@ repos:
     hooks:
     - id: beman-tidy
 
-exclude: 'infra/|port/'
+exclude: 'infra/|port/|papers/wg21/|papers/wg21-latex/'
