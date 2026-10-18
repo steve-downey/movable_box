@@ -483,7 +483,7 @@ requires std&colon;&colon;copy&lowbar;constructible&lt;T&gt; &amp;&amp; (!detail
 <h2 id="_remarks">Remarks&colon;</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The exception specification is equivalent to&colon; <code>is&lowbar;nothrow&lowbar;copy&lowbar;constructible&lowbar;v&lt;T&gt; &amp;&amp; (!copyable&lt;T&gt; &verbar;&verbar; is&lowbar;nothrow&lowbar;copy&lowbar;assignable&lowbar;v&lt;T&gt;)</code>&period;</p>
+<p>The exception specification is equivalent to <code>is&lowbar;nothrow&lowbar;copy&lowbar;constructible&lowbar;v&lt;T&gt;</code> and, if <code>copyable&lt;T&gt;</code> is modeled, <code>is&lowbar;nothrow&lowbar;copy&lowbar;assignable&lowbar;v&lt;T&gt;</code>&period;</p>
 </div>
 <div class="paragraph">
 <p>This operator is trivial if <code>is&lowbar;trivially&lowbar;copy&lowbar;constructible&lowbar;v&lt;T&gt;</code>, <code>is&lowbar;trivially&lowbar;copy&lowbar;assignable&lowbar;v&lt;T&gt;</code>, and <code>is&lowbar;trivially&lowbar;destructible&lowbar;v&lt;T&gt;</code> are all <code>true</code>&period;</p>
@@ -533,7 +533,7 @@ requires std&colon;&colon;copy&lowbar;constructible&lt;T&gt; &amp;&amp; (!detail
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-17 02:40:30 UTC
+Last updated 2026-10-18 00:04:47 UTC
 </div>
 </div>
 </body>

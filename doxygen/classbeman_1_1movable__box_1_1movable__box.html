@@ -177,7 +177,7 @@ requires std::default_initializable&lt;T&gt;</div>
   </tr>
 </table>
 </div><div class="memdoc">
-<dl class="section user"><dt>Effects:</dt><dd>Equivalent to <span class="tt">movable_box(in_place)</span>. [<em>Note</em>: The contained value is value-initialized. — <em>end note</em>] </dd></dl>
+<dl class="section user"><dt>Effects:</dt><dd>Equivalent to <span class="tt">movable_box(in_place)</span>. </dd></dl>
 
 </div>
 </div>
@@ -516,7 +516,7 @@ requires std::copy_constructible&lt;T&gt; &amp;&amp; (!detail::use_trivial_copy_
 </ul>
 </dd></dl>
 <dl class="section return"><dt>Returns</dt><dd><span class="tt">*this</span>. </dd></dl>
-<dl class="section remark"><dt>Remarks</dt><dd>The exception specification is equivalent to: <span class="tt">is_nothrow_copy_constructible_v&lt;T&gt; &amp;&amp; (!copyable&lt;T&gt; || is_nothrow_copy_assignable_v&lt;T&gt;)</span>.</dd></dl>
+<dl class="section remark"><dt>Remarks</dt><dd>The exception specification is equivalent to <span class="tt">is_nothrow_copy_constructible_v&lt;T&gt;</span> and, if <span class="tt">copyable&lt;T&gt;</span> is modeled, <span class="tt">is_nothrow_copy_assignable_v&lt;T&gt;</span>.</dd></dl>
 <p>This operator is trivial if <span class="tt">is_trivially_copy_constructible_v&lt;T&gt;</span>, <span class="tt">is_trivially_copy_assignable_v&lt;T&gt;</span>, and <span class="tt">is_trivially_destructible_v&lt;T&gt;</span> are all <span class="tt">true</span>. </p>
 
 </div>
@@ -552,7 +552,7 @@ requires (!detail::use_trivial_move_assign_v&lt;T&gt;)</div>
 </ul>
 </dd></dl>
 <dl class="section return"><dt>Returns</dt><dd><span class="tt">*this</span>. </dd></dl>
-<dl class="section remark"><dt>Remarks</dt><dd>The exception specification is equivalent to: <span class="tt">is_nothrow_move_constructible_v&lt;T&gt; &amp;&amp; (!movable&lt;T&gt; || is_nothrow_move_assignable_v&lt;T&gt;)</span>.</dd></dl>
+<dl class="section remark"><dt>Remarks</dt><dd>The exception specification is equivalent to <span class="tt">is_nothrow_move_constructible_v&lt;T&gt;</span> and, if <span class="tt">movable&lt;T&gt;</span> is modeled, <span class="tt">is_nothrow_move_assignable_v&lt;T&gt;</span>.</dd></dl>
 <p>This operator is trivial if <span class="tt">is_trivially_move_constructible_v&lt;T&gt;</span>, <span class="tt">is_trivially_move_assignable_v&lt;T&gt;</span>, and <span class="tt">is_trivially_destructible_v&lt;T&gt;</span> are all <span class="tt">true</span>. </p>
 
 </div>
