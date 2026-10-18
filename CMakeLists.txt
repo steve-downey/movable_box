@@ -110,5 +110,6 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running gcovr to process coverage results"
     COMMAND mkdir -p coverage
-    COMMAND gcovr --config gcovr.cfg .
+    COMMAND
+        gcovr --config gcovr.cfg "${CMAKE_BINARY_DIR}/tests/beman/movable_box"
 )

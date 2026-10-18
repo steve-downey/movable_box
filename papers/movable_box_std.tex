@@ -1,0 +1,47 @@
+% papers/movable_box_std.tex                                      -*-LaTeX-*-
+% SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+%
+% Built with `make papers` or `make -C papers std-paper`.
+
+\documentclass[a4paper,10pt,oneside,openany,final,article]{memoir}
+\input{common}
+
+\begin{document}
+\title{\tcode{std::movable_box}: std-LaTeX wording example}
+\author{Steve Downey \small<\href{mailto:sdowney@gmail.com}{sdowney@gmail.com}>}
+\date{}
+\maketitle
+
+\begin{flushright}
+  \begin{tabular}{ll}
+    Document \#: & P4346R0 \\
+    Date: & \today \\
+    Project: & Programming Language C++ \\
+    Audience: & LEWG
+  \end{tabular}
+\end{flushright}
+
+\begin{abstract}
+This minimal paper demonstrates importing the C++ draft LaTeX emitted by
+beman.specgen from the same annotated header used by the WG21 Markdown paper.
+\end{abstract}
+
+\chapter{Wording}
+
+Wording is relative to the current working draft.
+
+\begin{wording}
+
+\rSec1[movable.box]{Movable wrapper}
+
+\rSec2[movable.box.general]{General}
+
+\pnum
+A \tcode{movable_box<T>} either contains a value of type \tcode{T} or
+contains no value.
+
+\input{wording/movable_box}
+
+\end{wording}
+
+\end{document}
