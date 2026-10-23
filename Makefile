@@ -167,7 +167,9 @@ LATEX_WORDING := $(WORDING_DIR)/movable_box.tex
 WORDING_FRAGMENTS := $(WORDING_MANIFEST) \
     $(patsubst ./%,$(WORDING_DIR)/%,$(file < $(WORDING_MANIFEST)))
 # What specgen read to produce the fragments, the header and everything it
-# includes. Absent until the first run, hence $(wildcard) below.
+# includes. Absent until the first run, hence $(wildcard) below. The specgen
+# version is a dependency too; it is pinned in scripts/gen-wording.sh, which is
+# why that script is a prerequisite of both rules.
 WORDING_DEPFILE := $(BUILD_DIR)/wording.d
 LATEX_WORDING_DEPFILE := $(BUILD_DIR)/wording-latex.d
 

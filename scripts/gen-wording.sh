@@ -48,10 +48,15 @@ shift $(( $# > 0 ? 1 : 0 ))
 
 readonly HEADER="$REPO_ROOT/include/beman/movable_box/movable_box.hpp"
 readonly SPECGEN_INDEX="https://test.pypi.org/simple"
+# specgen is pinned because its output is checked in, and its version is part
+# of what that output depends on. The Makefile cannot see which release uvx
+# would resolve, but it does list this script as a prerequisite of the
+# wording, so bumping the pin here is what makes `make papers` regenerate it.
+readonly SPECGEN_VERSION="0.5.1"
 readonly -a SPECGEN_CMD=(
     "$UVX"
     --index "$SPECGEN_INDEX"
-    beman-specgen
+    "beman-specgen==$SPECGEN_VERSION"
 )
 
 case "$SPECGEN_BACKEND" in

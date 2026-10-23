@@ -18,7 +18,8 @@ namespace std {
 
     constexpr movable_box(const movable_box& rhs)
       requires copy_constructible<T>;
-    constexpr movable_box(movable_box&& rhs) noexcept(is_nothrow_move_constructible_v<T>);
+    constexpr movable_box(movable_box&& rhs) noexcept(
+        is_nothrow_move_constructible_v<T>);
 
     // \ref{movable.box.dtor}, destructor
     constexpr ~movable_box();
