@@ -159,20 +159,17 @@ cases the standard library keeps finding for it. Where the existing
 specification leaves a choice, prefer the resolution already made by
 [range.move.wrap] [@rangemovewrap] and by shipping implementations.
 
-Three principles decide the rest of this section, and are worth stating
-before the decisions that follow from them.
+Three principles decide the rest of this section.
 
 **Fail loudly, not subtly.** The type is proposed for the use cases it
-already matches. Used outside them, it must not compile — not compile
-and quietly do the wrong thing. An operation is omitted when supplying
-it would give an answer that is defensible in isolation and wrong in
-context; the empty state drives most of these, because it is an
-exception artifact rather than a domain state, and any operation whose
-semantics turn on it computes over something that should not have been
-reachable. `movable_box<T&>` is ill-formed for the same reason
-([Constraints](#constraints)). This is the warrant for the
+already matches. Used outside them, it must not compile. An operation
+is omitted when supplying it would give an answer that is defensible in
+isolation and wrong in context; the empty state drives most of these,
+because it is an exception artifact rather than a domain state, and any
+operation whose semantics turn on it computes over something that should
+not have been reachable. `movable_box<T&>` is ill-formed for the same
+reason ([Constraints](#constraints)). This is the warrant for the
 [interface](#interface) and the [non-goals](#non-goals).
-An audit of what the views happen to call is not.
 
 **A drop-in for what ships now.** A vendor must be able to implement
 `std::movable_box` as their existing box and alias the exposition-only
@@ -181,7 +178,7 @@ wording mandates no structure ([Specification shape](#specification-shape))
 and why nothing in the interface can make the empty state reachable on
 demand ([Interface](#interface)).
 
-**Adoption is a one-time cost.** It should be a rename plus a bounded,
+**Adoption is bounded.** It should be a rename plus a bounded,
 mechanical set of edits, after which library implementers owe this
 component nothing further. A delta specification fails this test on its
 own: it makes every future change to `optional` into a standing question
@@ -192,8 +189,7 @@ preferences. If adopting `std::movable_box` would mandate an ABI break
 in libstdc++, libc++, or the Microsoft STL, the proposal should be
 rejected, and I will withdraw it. There is no version of this component
 worth a break: the whole claim is that the type already exists and users
-cannot reach it. A vocabulary type is not worth breaking the ABI of
-every view in the standard library. See
+cannot reach it. See
 [Implementation Experience](#implementation-experience) for what has
 been confirmed and what has not.
 
@@ -217,11 +213,11 @@ cppreference already know.
 
 Alternatives considered:
 
-- `box` — attractive and short, but underspecified, and squats on a name
+- `box`: attractive and short, but underspecified, and squats on a name
   with broader plausible meanings.
-- `value_box` / `assignable_box` — novel names for a known type; no
+- `value_box` / `assignable_box`: novel names for a known type; no
   constituency.
-- `semiregular_box` — range-v3's name, but inaccurate since [@P2325R3]:
+- `semiregular_box`: range-v3's name, but inaccurate since [@P2325R3]:
   the type is not required to be default constructible or copyable.
 
 ## Namespace
@@ -232,8 +228,8 @@ Although the specification currently lives in [ranges], nothing about
 the type's semantics is ranges-specific. Placing it in `std::ranges`
 would be defensible, given the ranges-shaped scope of this proposal.
 However, I have a weak preference for `std`, matching the other small
-vocabulary components that view authors reach for — `in_place_t`, and
-the concepts of [concepts] — and avoiding a second-class name if other
+vocabulary components that view authors reach for (`in_place_t`, and
+the concepts of [concepts]), and avoiding a second-class name if other
 library clauses later adopt it. LEWG direction welcome.
 
 ## Header
@@ -274,8 +270,8 @@ twice over:
 
 The proposed wording is therefore self-contained: it defines "contains
 a value" for `movable_box` directly, specifies each member's effects in
-its own right, and never references `optional`. This costs perhaps a
-page of wording and buys structural independence. It also means the
+its own right, and never references `optional`. That is about a page
+of wording. It also means the
 disengaged state's semantics are stated where they belong, as
 postconditions of the synthesized assignments, rather than inherited
 from a type whose disengaged state is a first-class feature.
@@ -291,12 +287,10 @@ synthesized assignments, `operator*`, `operator->`, `has_value`, and
 Two things point the same way:
 
 - **Loud failure.** The goal is to hand range-type implementers the tool
-  the standard library uses. It is not to grow a second `optional`. An
-  operation is omitted where offering it would answer a question the
-  type has no business answering — and answer it plausibly, which is
-  worse than not answering. Absent operations are a compile error at the
-  point of misuse. That the views do not call them is corroboration, not
-  the argument: the views are not the constituency this paper is for.
+  the standard library uses. It is not to grow a second `optional`.
+  Absent operations are a compile error at the point of misuse. That the
+  views do not call them is corroboration, not the argument: the views
+  are not the constituency this paper is for.
 
 - **The storage optimization.** [range.move.wrap] p2 recommends storing
   only a `T`, with no discriminant, whenever the synthesized
@@ -358,42 +352,40 @@ transitively, trivially copyable views.
 
 ## Non-goals
 
-The following are absent. Each is additive, and none is precluded for
-the future, but the reason each is absent now is that
-supplying it would answer a question over the empty state, which is an
-exception artifact and not a domain state. A wrong answer that compiles
-is worse than no answer.
+The following are absent. Each is additive and none is precluded for the
+future. Each is absent now because it would answer a question over the
+empty state.
 
-- Value assignment (`operator=(U&&)`) — also inconsistent as specified
+- Value assignment (`operator=(U&&)`): also inconsistent as specified
   for `optional`, whose version is constrained on `is_assignable_v`,
   which would vanish for the types this box serves.
-- `emplace` and `reset` — used only *within* the specification of the
+- `emplace` and `reset`: used only *within* the specification of the
   synthesized assignments; not part of the public interface. `reset`
   would also make the empty state reachable on demand, forcing a
   discriminant into every specialization ([Interface](#interface)).
 - `value()`, `value_or()`, monadic operations, `nullopt` in any form,
-  `bad_optional_access` — the empty state is not a domain state, and
+  `bad_optional_access`: the empty state is not a domain state, and
   each of these is an operation for handling one that is.
-- Comparison operators and `hash` support — `optional`'s comparisons
+- Comparison operators and `hash` support: `optional`'s comparisons
   order the disengaged state below every value, and its `hash`
   specialization hashes it. Here that would be
   ordering and hashing on an exception artifact: an answer that is
   well-defined, cheap to provide, and meaningless. Two boxes that have
   each survived a throwing assignment are not thereby equal.
-- Member or free `swap` — `std::swap` works through the synthesized
+- Member or free `swap`: `std::swap` works through the synthesized
   move operations, and notably works even when `T` itself is not
   swappable; no bespoke overload is needed.
-- Deduction guides — views name the box's type parameter explicitly;
+- Deduction guides: views name the box's type parameter explicitly;
   so should other users. Class template argument deduction from the
   constructors is unaffected.
-- An `initializer_list` overload of the `in_place` constructor — no
+- An `initializer_list` overload of the `in_place` constructor: no
   view uses one. This is the weakest entry in this list: it answers no
   question about emptiness, and its absence is a compile error for a use
   the type is meant for rather than one it is not. It is omitted to
   match what ships, and I would not oppose adding it.
-- A `copyable_box` — [@P2494R2] subsumed it: when
+- A `copyable_box`: [@P2494R2] subsumed it: when
   `copy_constructible<T>` holds, `movable_box<T>` is copyable.
-- *non-propagating-cache* — the box's sibling in [range.adaptor.helpers]
+- *non-propagating-cache*: the box's sibling in [range.adaptor.helpers]
   has different semantics (copies produce empty) and is not proposed.
   This paper is not a general program to standardize exposition-only
   helpers; it is a claim that this one component has proven, portable
@@ -448,10 +440,10 @@ The four failures are not defects. [range.move.wrap] specifies the
 exposition-only type well, and an exposition-only type owes correct
 behavior only where the library uses it; every difference below is
 either unobservable through the views, or is not required by the current
-exposition-only wording. The question this paper has to answer is not
-whether they are bugs. It is what adopting the public interface would
-cost a vendor: whether the differences can be closed without breaking
-any currently conforming program, and without moving any layout.
+exposition-only wording. The question is what adopting the public
+interface asks of a vendor: whether the differences can be closed
+without breaking any currently conforming program, and without moving
+any layout.
 
 - **`value_type` is absent.** The no-discriminant `__box`
   specialization does not provide it. No view names it.
@@ -567,8 +559,8 @@ The semantic divergences that remain fall into two families:
   `this == addressof(rhs)`. For a copyable payload, none of the three
   implementations provides that today: whenever `T` models `copyable`
   (respectively `movable`), all three defer to `T`'s own assignment
-  operator — defaulted in libstdc++'s and libc++'s no-discriminant
-  specializations, unconditional in the Microsoft STL's branches — so
+  operator (defaulted in libstdc++'s and libc++'s no-discriminant
+  specializations, unconditional in the Microsoft STL's branches), so
   `T`'s assignment observes the self-assignment. The cross-checks also
   surfaced a case the libstdc++ run could not: in the *discriminated*
   box of a movable payload, libc++ (which defaults move assignment
@@ -601,12 +593,12 @@ wording decision plus a conforming strengthening. The self-assignment postcondit
 [movable.box.assign] is provided by none of the three for copyable
 payloads, and by only libstdc++ for the movable discriminated case, so
 LEWG should decide it explicitly (Open Questions, item 5): keep the
-guarantee, with vendors adding one cheap, ABI-free self-check per
-assignment operator, or weaken the wording to defer to `T`'s assignment
+guarantee, with vendors adding one self-check per assignment operator,
+which has no ABI effect, or weaken the wording to defer to `T`'s assignment
 when `copyable<T>` / `movable<T>` is modeled, matching everything that
 ships. The libstdc++ header-patch experiment above remains the deepest
-of the three results — it also rebuilt every view against the patched
-box — and repeating it for libc++ and the Microsoft STL is available as
+of the three results (it also rebuilt every view against the patched
+box), and repeating it for libc++ and the Microsoft STL is available as
 further confirmation; but the interface-level question it answered is
 now answered for all three.
 
@@ -698,8 +690,8 @@ already free to make under [res.on.exception.handling]; no currently
 conforming program can observe the difference. LWG review should confirm
 the other three equivalences and this one departure. The triviality
 *Remarks* on the assignment operators follow the conditions of
-[optional.assign] and keep `movable_box<T>` — and every view storing
-one — trivially copyable for trivially copyable, trivially assignable
+[optional.assign] and keep `movable_box<T>` (and every view storing
+one) trivially copyable for trivially copyable, trivially assignable
 `T`; this is new relative to the exposition-only specification, whose
 triviality *Remarks* cover only the constructors and the destructor,
 and the reference implementation implements it.
@@ -711,8 +703,8 @@ other may throw: a non-assignable `T` with a trivial copy constructor
 and a potentially-throwing move constructor, for instance. The box's
 copy constructor must then be trivial in the discriminated layout too.
 Copying the contained value and the discriminant as they stand gives the
-specified effects whether or not a value is present, so this costs
-nothing. `optional`'s constructors already behave this way, and both
+specified effects whether or not a value is present, so triviality
+holds in both layouts. `optional`'s constructors already behave this way, and both
 libstdc++ and libc++ inherit it by falling back to `optional`; the
 reference implementation defaults the corresponding constructor
 directly.
@@ -737,11 +729,11 @@ the following differences: [...]
 *Drafting note*: paragraphs 1.1–1.4 and 2 are struck in their entirety;
 their content is subsumed by [movable.box]. All uses of *movable-box*
 elsewhere in [ranges] are unchanged, as are the semantics of every view
-specified in terms of it. The operations clause [ranges] performs on
-*movable-box* — default construction, direct-initialization from
+specified in terms of it. Clause [ranges] performs these operations on
+*movable-box*: default construction, direct-initialization from
 `const T&` and `T&&`, `in_place` construction, the special member
 functions, `operator*`, `operator->` (`single_view::data`), and
-`has_value` in preconditions — are all provided by [movable.box];
+`has_value` in preconditions. All are provided by [movable.box];
 this claim should be re-audited against the working draft during
 wording review.
 
@@ -771,7 +763,7 @@ Add:
    effects when `this == addressof(rhs)`. No shipping implementation
    provides that where the box defers to `T`'s own assignment operator
    (see [Implementation Experience](#implementation-experience)). Keep
-   the guarantee — vendors add a self-check per assignment operator —
+   the guarantee (vendors add a self-check per assignment operator)
    or defer to `T`'s assignment semantics when `copyable<T>` /
    `movable<T>` is modeled, matching what ships?
 
