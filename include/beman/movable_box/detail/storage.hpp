@@ -18,7 +18,8 @@
 
 namespace beman::movable_box::detail {
 
-// Storage selection, per [movable.box.general] p3 (recommended practice) and design decision D8:
+// Storage selection, per [movable.box.general] p3 (recommended practice) and the paper's "Storage and
+// triviality" decision:
 //
 //   If copy_constructible<T> is modeled, movable_box<T> should store only a T if either T models
 //   copyable, or is_nothrow_move_constructible_v<T> && is_nothrow_copy_constructible_v<T> is true.

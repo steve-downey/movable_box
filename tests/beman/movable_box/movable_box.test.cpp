@@ -14,9 +14,9 @@
 // papers/movable_box.md ([movable.box.general] / [movable.box.ctor] /
 // [movable.box.dtor] / [movable.box.assign] / [movable.box.obs]), not
 // against any particular implementation strategy. Storage-optimization
-// (D8/[movable.box.general]p3, recommended practice) is exercised only where
-// the facts supplied for this reference implementation guarantee a specific
-// sizeof/triviality outcome.
+// ([movable.box.general]p3, recommended practice; the paper's "Storage and
+// triviality" decision) is exercised only where the facts supplied for this
+// reference implementation guarantee a specific sizeof/triviality outcome.
 //
 // The box under test is beman::movable_box::movable_box by default. The
 // conformance targets in CMakeLists.txt instead run the same suite against
@@ -132,7 +132,7 @@ struct MoveOnly {
 };
 
 // Neither copy- nor move-constructible: movable_box<Immovable> must be
-// ill-formed per D7.
+// ill-formed per the paper's "Constraints" decision.
 struct Immovable {
     Immovable()                            = default;
     Immovable(const Immovable&)            = delete;
@@ -274,8 +274,8 @@ struct TrivialMoveThrowingCopy {
 };
 
 // Detects whether box_under_test::movable_box<T> is a valid type: used
-// to check the constraints in D7 without triggering a hard compile error
-// for the negative cases.
+// to check the paper's "Constraints" decision without triggering a hard
+// compile error for the negative cases.
 template <class T>
 concept can_box = requires { sizeof(box_under_test::movable_box<T>); };
 
@@ -298,7 +298,7 @@ void check_value_type_is_impl() {
 } // namespace
 
 // ---------------------------------------------------------------------
-// Interface presence (D6) and constraints (D7)
+// Interface presence and constraints (the paper's "Interface" and "Constraints" decisions)
 // ---------------------------------------------------------------------
 
 // Proposed-public-interface only: value_type is part of the proposed
@@ -321,8 +321,9 @@ TEST_CASE("default constructor is present iff default_initializable<T>",
     STATIC_REQUIRE(std::default_initializable<int>);
     STATIC_REQUIRE(std::default_initializable<box_under_test::movable_box<int>>);
 
-    // Delta-specification hazard, exactly as argued in D5: libstdc++'s
-    // optional-based primary __box inherits optional's constructors --
+    // Delta-specification hazard, exactly as argued in the paper's
+    // "Specification shape" decision: libstdc++'s optional-based primary
+    // __box inherits optional's constructors --
     // including the default constructor -- so __box<ThrowingCopy>{} is
     // well-formed and produces a *disengaged* box even though ThrowingCopy
     // is not default_initializable. Unobservable through the views (their
@@ -382,11 +383,11 @@ TEST_CASE("the box always models movable when T is move_constructible", "[movabl
 TEST_CASE("absent interface: no value assignment, no equality, move-only box is not copyable", "[movable_box]") {
     using RegularBox = box_under_test::movable_box<Regular>;
 
-    // D9: value assignment (operator=(U&&)) is not part of the interface.
+    // Non-goals: value assignment (operator=(U&&)) is not part of the interface.
     STATIC_REQUIRE_FALSE(std::is_assignable_v<RegularBox&, Regular>);
     STATIC_REQUIRE_FALSE(std::is_assignable_v<RegularBox&, Regular&&>);
 
-    // D9: comparison operators are not part of the interface.
+    // Non-goals: comparison operators are not part of the interface.
     STATIC_REQUIRE_FALSE(std::equality_comparable<RegularBox>);
 
     // A box of a move-only type is not copyable, even though it is movable.
@@ -395,7 +396,7 @@ TEST_CASE("absent interface: no value assignment, no equality, move-only box is 
     STATIC_REQUIRE(std::movable<MoveOnlyBox>);
 }
 
-TEST_CASE("constraints: no reference types, no void, no immovable types (D7)", "[movable_box]") {
+TEST_CASE("constraints: no reference types, no void, no immovable types", "[movable_box]") {
     STATIC_REQUIRE(can_box<int>);
     STATIC_REQUIRE(can_box<Regular>);
 
@@ -882,8 +883,9 @@ TEST_CASE("assigning an empty box into an engaged box disengages it", "[movable_
 }
 
 // ---------------------------------------------------------------------
-// Triviality and storage propagation (D8, and the recommended-practice
-// storage optimization this reference implementation follows)
+// Triviality and storage propagation (the paper's "Storage and triviality"
+// decision, and the recommended-practice storage optimization this
+// reference implementation follows)
 // ---------------------------------------------------------------------
 
 TEST_CASE("movable_box<int> propagates triviality and storage of int", "[movable_box]") {
@@ -1040,7 +1042,7 @@ TEST_CASE("noexcept: move assignment matches is_nothrow_move_constructible_v<T> 
 }
 
 // ---------------------------------------------------------------------
-// constexpr (D10)
+// constexpr
 // ---------------------------------------------------------------------
 
 namespace {

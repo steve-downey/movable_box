@@ -139,7 +139,7 @@ clause [ranges]. An audit gives:
 
 That is the entire interface proposed. Everything else `optional` offers
 is absent; see the design decisions and the consolidated non-goals in
-[D9](#d9-non-goals-consolidated).
+[Non-goals](#non-goals).
 
 ## History
 
@@ -169,21 +169,23 @@ it would give an answer that is defensible in isolation and wrong in
 context; the empty state drives most of these, because it is an
 exception artifact rather than a domain state, and any operation whose
 semantics turn on it computes over something that should not have been
-reachable. `movable_box<T&>` is ill-formed for the same reason (D7).
-This is the warrant for the interface in D6 and the non-goals in D9.
+reachable. `movable_box<T&>` is ill-formed for the same reason
+([Constraints](#constraints)). This is the warrant for the
+[interface](#interface) and the [non-goals](#non-goals).
 An audit of what the views happen to call is not.
 
 **A drop-in for what ships now.** A vendor must be able to implement
 `std::movable_box` as their existing box and alias the exposition-only
 name to it, with no view changing layout or behavior. This is why the
-wording mandates no structure (D5) and why nothing in the interface can
-make the empty state reachable on demand (D6).
+wording mandates no structure ([Specification shape](#specification-shape))
+and why nothing in the interface can make the empty state reachable on
+demand ([Interface](#interface)).
 
 **Adoption is a one-time cost.** It should be a rename plus a bounded,
 mechanical set of edits, after which library implementers owe this
 component nothing further. A delta specification fails this test on its
 own: it makes every future change to `optional` into a standing question
-about `movable_box` (D5).
+about `movable_box` ([Specification shape](#specification-shape)).
 
 The drop-in principle is a condition on the paper; the other two are
 preferences. If adopting `std::movable_box` would mandate an ABI break
@@ -195,7 +197,7 @@ every view in the standard library. See
 [Implementation Experience](#implementation-experience) for what has
 been confirmed and what has not.
 
-## D1: No semantic changes
+## Semantics
 
 `std::movable_box<T>`, restricted to the interface above, has exactly
 the semantics specified in [range.move.wrap]. The exposition-only
@@ -203,7 +205,7 @@ the semantics specified in [range.move.wrap]. The exposition-only
 changes are borderline editorial and no implementation needs to change
 behavior; vendors may literally rename (or alias) their internal type.
 
-## D2: Name
+## Name
 
 Proposed: `movable_box`.
 
@@ -222,7 +224,7 @@ Alternatives considered:
 - `semiregular_box` — range-v3's name, but inaccurate since [@P2325R3]:
   the type is not required to be default constructible or copyable.
 
-## D3: Namespace
+## Namespace
 
 Proposed: `namespace std`.
 
@@ -234,22 +236,23 @@ vocabulary components that view authors reach for — `in_place_t`, and
 the concepts of [concepts] — and avoiding a second-class name if other
 library clauses later adopt it. LEWG direction welcome.
 
-## D4: Header
+## Header
 
 Proposed: `<utility>`.
 
-With the specification decoupled from `optional` (D5), `<optional>`
-loses its claim. The type's constituency includes every author of a
-view type, all of whom include `<ranges>`; but per D3 the component is
-not ranges-specific. `<utility>` is where small, broadly applicable
+With the specification decoupled from `optional`
+([Specification shape](#specification-shape)), `<optional>` loses its
+claim. The type's constituency includes every author of a view type, all
+of whom include `<ranges>`; but per [Namespace](#namespace) the
+component is not ranges-specific. `<utility>` is where small, broadly applicable
 vocabulary components live, and the addition is tiny.
 
 Alternatives: a new `<movable_box>` header (defensible under the
 one-component-one-header trend; I am not opposed), `<optional>`
 (rejected: implies a structural relationship this paper explicitly
-disclaims), `<ranges>` (rejected per D3).
+disclaims), `<ranges>` (rejected per [Namespace](#namespace)).
 
-## D5: Standalone specification — `optional` is not involved
+## Specification shape
 
 [range.move.wrap] says *movable-box* "behaves exactly like
 `optional<T>`" with enumerated differences. For an exposition-only type
@@ -277,7 +280,7 @@ disengaged state's semantics are stated where they belong, as
 postconditions of the synthesized assignments, rather than inherited
 from a type whose disengaged state is a first-class feature.
 
-## D6: Interface — the observed usage surface
+## Interface
 
 Proposed: the operations enumerated in [Scope](#scope-exactly-the-standard-librarys-usage-no-more):
 default construction, direct construction from `const T&`/`T&&`,
@@ -316,7 +319,7 @@ from `T` itself, so implicit conversion and a templated converting
 constructor (with its attendant constraint and CTAD questions) are not
 needed and not proposed.
 
-## D7: Constraints
+## Constraints
 
 Unchanged: `move_constructible<T> && is_object_v<T>`.
 
@@ -333,13 +336,14 @@ will be asked about, so:
   costs, closer to `indirect` ([@P3019R11]) territory, and is out of
   scope.
 
-## D8: Storage and triviality
+## Storage and triviality
 
 The recommended practice of [range.move.wrap] p2 is carried over
 verbatim. Layout is unspecified generally, so it stays a
 quality-of-implementation matter.
 
-Because the specification is standalone (D5), the triviality guarantees
+Because the specification is standalone
+([Specification shape](#specification-shape)), the triviality guarantees
 that were previously inherited must now be stated: the destructor is
 trivial if `is_trivially_destructible_v<T>` is `true`, and the copy/move
 constructors are trivial if `T`'s corresponding constructors are
@@ -352,7 +356,7 @@ the conditions of [optional.assign], so trivially copyable (and
 trivially assignable) payloads yield trivially copyable boxes — and,
 transitively, trivially copyable views.
 
-## D9: Non-goals, consolidated
+## Non-goals
 
 The following are absent. Each is additive, and none is precluded for
 the future, but the reason each is absent now is that
@@ -366,7 +370,7 @@ is worse than no answer.
 - `emplace` and `reset` — used only *within* the specification of the
   synthesized assignments; not part of the public interface. `reset`
   would also make the empty state reachable on demand, forcing a
-  discriminant into every specialization (D6).
+  discriminant into every specialization ([Interface](#interface)).
 - `value()`, `value_or()`, monadic operations, `nullopt` in any form,
   `bad_optional_access` — the empty state is not a domain state, and
   each of these is an operation for handling one that is.
@@ -395,16 +399,16 @@ is worse than no answer.
   helpers; it is a claim that this one component has proven, portable
   demand.
 
-## D10: `constexpr`
+## `constexpr`
 
 Fully `constexpr`, as the exposition-only type already must be for the
 views to be usable in constant expressions.
 
-## D11: Feature test macro
+## Feature test macro
 
 `__cpp_lib_movable_box`, in `<utility>` and `<version>`.
 
-## D12: Freestanding
+## Freestanding
 
 The proposed interface has no throwing accessors and no dependency on
 `bad_optional_access`; nothing obstructs marking the subclause
@@ -474,8 +478,8 @@ any currently conforming program, and without moving any layout.
   default-initializable the box's own constructor is preferred and the
   box is engaged; where it is not, the box's own constructor drops out
   of the overload set and the inherited one is all that is left. This
-  is the delta-specification
-  hazard of D5, caught in the wild: the interface `optional` exports was
+  is the delta-specification hazard
+  ([Specification shape](#specification-shape)), caught in the wild: the interface `optional` exports was
   never chosen, only inherited. The views cannot reach it; their own
   default constructors are already constrained on
   `default_initializable<T>`, so within [ranges] the box is correct.
@@ -522,7 +526,8 @@ the public self-assignment guarantee needs either an implementation
 change or a wording decision. What carries the ABI result is still that
 the vendor can implement `std::movable_box` as *their* box and alias the
 exposition-only name to it. That is only available because the proposed
-wording is standalone (D5) and mandates no structure. A specification
+wording is standalone ([Specification shape](#specification-shape))
+and mandates no structure. A specification
 that made `movable_box` an `optional` with patches would put every
 view's layout back in play.
 
@@ -754,12 +759,14 @@ Add:
 
 # Open Questions for LEWG
 
-1. Header: `<utility>` or a new `<movable_box>` (D4)?
-2. Namespace: `std` or `std::ranges` (D3)?
+1. Header: `<utility>` or a new `<movable_box>` ([Header](#header))?
+2. Namespace: `std` or `std::ranges` ([Namespace](#namespace))?
 3. Are the value constructors correctly `explicit` and non-template
-   (D6)?
-4. Does LEWG endorse the standalone specification (D5) and the
-   usage-surface-only interface (D6, D9) as the scope of the paper?
+   ([Interface](#interface))?
+4. Does LEWG endorse the standalone specification
+   ([Specification shape](#specification-shape)) and the
+   usage-surface-only interface ([Interface](#interface),
+   [Non-goals](#non-goals)) as the scope of the paper?
 5. Self-assignment: the proposed [movable.box.assign] specifies no
    effects when `this == addressof(rhs)`. No shipping implementation
    provides that where the box defers to `T`'s own assignment operator
