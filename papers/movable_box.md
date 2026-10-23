@@ -250,6 +250,9 @@ disclaims), `<ranges>` (rejected per [Namespace](#namespace)).
 
 ## Specification shape
 
+Proposed: a self-contained specification that never references
+`optional`.
+
 [range.move.wrap] says *movable-box* "behaves exactly like
 `optional<T>`" with enumerated differences. For an exposition-only type
 whose every use is visible to the specification's authors, that is an
@@ -304,8 +307,8 @@ Two things point the same way:
 
 The engagement observers are retained even though views use them only
 in preconditions: the valueless-by-exception state is real, and a type
-that can be empty but cannot be asked is a trap. This mirrors the
-honesty of `variant::valueless_by_exception`.
+that can be empty but cannot be asked is a trap. `variant` makes the
+same admission with `valueless_by_exception`.
 
 The constructors from `const T&` and `T&&` are proposed as `explicit`
 and non-template. The ranges clauses use only direct-initialization
@@ -419,7 +422,7 @@ behavior, layout, or ABI of any ranges component.
 The proposed interface has been checked against all three shipping
 implementations of *movable-box*. In each, what the vendor's box lacks
 can be added without changing any layout. What remains is one wording
-decision, the self-assignment guarantee (Open Questions, item 5), and a
+decision, the self-assignment guarantee (Open Questions, item 3), and a
 conforming strengthening of the move assignment's `noexcept`, which
 needs no work.
 
@@ -566,10 +569,9 @@ The semantic divergences that remain fall into two families:
   box of a movable payload, libc++ (which defaults move assignment
   whenever `T` models `movable`, deferring to `optional`'s, which has
   no self-check) and the Microsoft STL (which assigns unconditionally)
-  both let `T`'s move assignment observe a self-move — a move
-  assignment that wipes its source then loses the value — while
-  libstdc++'s primary defines its own guarded assignment operators and
-  conforms. All three do guard the synthesized destroy-then-construct
+  both let `T`'s move assignment observe a self-move, a move
+  assignment that wipes its source then loses the value. libstdc++'s
+  primary defines its own guarded assignment operators and conforms. All three do guard the synthesized destroy-then-construct
   branches, where the self-check keeps self-assignment from destroying
   the operand outright.
 - **Exception-specification strengthening.** All three give the move
@@ -592,7 +594,7 @@ demonstrated additive with layouts unchanged, and the residue is one
 wording decision plus a conforming strengthening. The self-assignment postcondition of the proposed
 [movable.box.assign] is provided by none of the three for copyable
 payloads, and by only libstdc++ for the movable discriminated case, so
-LEWG should decide it explicitly (Open Questions, item 5): keep the
+LEWG should decide it explicitly (Open Questions, item 3): keep the
 guarantee, with vendors adding one self-check per assignment operator,
 which has no ABI effect, or weaken the wording to defer to `T`'s assignment
 when `copyable<T>` / `movable<T>` is modeled, matching everything that
@@ -753,13 +755,7 @@ Add:
 
 1. Header: `<utility>` or a new `<movable_box>` ([Header](#header))?
 2. Namespace: `std` or `std::ranges` ([Namespace](#namespace))?
-3. Are the value constructors correctly `explicit` and non-template
-   ([Interface](#interface))?
-4. Does LEWG endorse the standalone specification
-   ([Specification shape](#specification-shape)) and the
-   usage-surface-only interface ([Interface](#interface),
-   [Non-goals](#non-goals)) as the scope of the paper?
-5. Self-assignment: the proposed [movable.box.assign] specifies no
+3. Self-assignment: the proposed [movable.box.assign] specifies no
    effects when `this == addressof(rhs)`. No shipping implementation
    provides that where the box defers to `T`'s own assignment operator
    (see [Implementation Experience](#implementation-experience)). Keep
