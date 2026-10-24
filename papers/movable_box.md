@@ -1,6 +1,6 @@
 ---
 title: "`std::movable_box`: Give Users the Ranges Movable Wrapper"
-document: P4346R0
+document: D4346R2
 date: today
 audience: LEWG
 author:
@@ -32,6 +32,13 @@ references:
     citation-label: range.move.wrap
     title: "Working Draft, Programming Languages — C++, [range.move.wrap]"
     URL: https://eel.is/c++draft/range.move.wrap
+  - id: P3963R1
+    citation-label: P3963R1
+    title: "Assignable lambdas with capture"
+    author:
+      - family: Arutyunyan
+        given: Ruslan
+    URL: https://wg21.link/p3963r1
 ---
 
 # Abstract
@@ -64,6 +71,13 @@ clause [ranges] are borderline editorial.
 
 # Revision History
 
+## R2
+
+- Account for [@P3963R1]: the motivating claim about lambdas is
+  stated for the current language, and
+  [Storage and triviality](#storage-and-triviality) says how the
+  assignment triviality guarantees interact with assignable lambdas.
+
 ## R0
 
 Initial revision.
@@ -73,8 +87,11 @@ Initial revision.
 ## The problem *movable-box* solves
 
 Function objects in C++ are frequently not assignable. A lambda with a
-capture has a deleted copy assignment operator. Types with `const` or
-reference members are not assignable. Yet the range adaptors need to
+capture has, today, a deleted copy assignment operator; [@P3963R1]
+would make lambdas that capture only by value assignable, but lambdas
+that capture by reference or capture `this` would remain
+non-assignable. Types with `const` or reference members are not
+assignable either. Yet the range adaptors need to
 store such objects inside views, and views must model `movable`.
 
 *movable-box*`<T>` ([range.move.wrap]) augments a `move_constructible`
@@ -352,6 +369,25 @@ that implies. The assignment operators are also specified trivial under
 the conditions of [optional.assign], so trivially copyable (and
 trivially assignable) payloads yield trivially copyable boxes — and,
 transitively, trivially copyable views.
+
+The guarantees stop where `T`'s own assignment does. When `T` is not
+`copyable` (or not `movable`), the corresponding assignment is the
+synthesized destroy-then-construct, which is user-provided and so never
+trivial. No specification of the box can do better: a trivial
+assignment operator must be defaulted, and a defaulted assignment is
+deleted when a member's assignment is deleted, union member or not.
+Storing `T` as raw bytes would avoid that, but it gives up `constexpr`
+and changes the layout of boxes holding empty function objects. So a
+`transform_view` over a capturing lambda is not trivially copyable,
+under this proposal exactly as today.
+
+The fix belongs in the language. [@P3963R1] makes lambdas that capture
+by value assignable; it wants trivially copyable views so they can be
+passed to parallel range algorithms on accelerators. Such a lambda models
+`copyable`, the box assigns through `T`'s own assignment operators, and
+the assignment triviality stated here is what makes the resulting view
+trivially copyable. The two proposals are independent, and each makes
+the other more useful.
 
 ## Non-goals
 
